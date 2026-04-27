@@ -1,0 +1,15 @@
+services:
+  database:
+    image: postgres:18
+    container_name: postgres
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: game_database
+    ports:
+      - "5432:5432"
+
+  app:
+    build: .
+    depends_on:
+      - database
