@@ -1,15 +1,17 @@
 services:
-  database:
+  database_service:
     image: postgres:18
-    container_name: postgres
+    container_name: database_container
     environment:
-      POSTGRES_USER: test
-      POSTGRES_PASSWORD: test
-      POSTGRES_DB: game_database
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: 123456
+      POSTGRES_DB: database
     ports:
       - "5432:5432"
 
   app:
     build: .
+    volumes:
+      - ./data:/app/data  
     depends_on:
-      - database
+      - database_service
