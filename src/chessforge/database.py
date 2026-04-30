@@ -1,8 +1,11 @@
 import psycopg2
 import time
 
+from chessforge.global_constants import GAME_COLUMNS, GAME_COLUMNS_SNAKE_CASE
+
 
 def connect_to_database():
+    """Connects to the PostgreSQL database using credentials defined in the docker-compose.yml."""
     return psycopg2.connect(
         host="database_service",
         database="database",
@@ -12,6 +15,7 @@ def connect_to_database():
 
 
 def connect_to_database_or_wait(retries=10, delay=2):
+    """Tries to connect to the database, and if it fails, waits and retries for a specified number of times."""
     connection = None
     for i in range(retries):
         try:
@@ -24,51 +28,37 @@ def connect_to_database_or_wait(retries=10, delay=2):
     raise Exception("Could not connect to database after retries")
 
 
-# TODO maybe move keys to a config file
 def initialize_database(connection):
+    """If it does not exist, creates the games table, based on the GAME_COLUMNS definition."""
+    columns_sql = ",\n".join(f"{GAME_COLUMNS_SNAKE_CASE[column]} {column_type}" for column, column_type in GAME_COLUMNS.items())
     with connection.cursor() as cursor:
-        cursor.execute("""
+        cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS games (
                 id SERIAL PRIMARY KEY,
-                event TEXT,
-                result TEXT,
-                white_elo INT,
-                black_elo INT,
-                eco TEXT,
-                opening TEXT,
-                time_control TEXT,
-                termination TEXT
+                {columns_sql}
             );
         """)
     connection.commit()
 
 
 def insert_games(connection, games: list[dict]):
+    """Inserts a batch of games into the database, based on the GAME_COLUMNS definition."""
+    columns = list(GAME_COLUMNS.keys())
+    columns_str = ", ".join(GAME_COLUMNS_SNAKE_CASE[column] for column in columns)
+    placeholders = ", ".join(["%s"] * len(columns))
+
     with connection.cursor() as cursor:
-        cursor.executemany("""
-            INSERT INTO games (
-                event,
-                result,
-                white_elo,
-                black_elo,
-                eco, opening,
-                time_control,
-                termination
-            )
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-        """, [
-            (
-                game.get("event"),
-                game.get("result"),
-                game.get("white_elo"),
-                game.get("black_elo"),
-                game.get("eco"),
-                game.get("opening"),
-                game.get("time_control"),
-                game.get("termination"),
-            )
-            for game in games
-        ])
+        cursor.executemany(
+            f"""
+            INSERT INTO games ({columns_str})
+            VALUES ({placeholders})
+            """,
+            [
+                # loop over each column for each game, and create a tuple of values that fill the placeholders
+                tuple(game.get(column) for column in columns)
+                for game in games
+            ]
+        )
     connection.commit()
 
 

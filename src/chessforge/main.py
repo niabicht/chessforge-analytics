@@ -80,6 +80,13 @@ def stats(stat_type: str):
                 SELECT COUNT(*) FROM games;
             """)
 
+        elif stat_type == "debug":
+            cursor.execute("""
+                SELECT column_name
+                    FROM information_schema.columns
+                    WHERE table_name = 'games';
+            """)
+
         else:
             raise typer.BadParameter("Unknown stats type")
 

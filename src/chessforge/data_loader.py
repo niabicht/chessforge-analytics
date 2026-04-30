@@ -3,6 +3,7 @@ import zstandard as zstd
 
 from io import StringIO
 
+from chessforge.global_constants import GAME_COLUMNS
 from chessforge.utils import int_or_none
 
 
@@ -43,13 +44,11 @@ def parse_game_string_into_dict(pgn_text: str):
         return None
 
     headers = game.headers
-    return {
-        "event": headers.get("Event"),
-        "result": headers.get("Result"),
-        "white_elo": int_or_none(headers.get("WhiteElo", None)),
-        "black_elo": int_or_none(headers.get("BlackElo", None)),
-        "eco": headers.get("ECO"), # opening classification code
-        "opening": headers.get("Opening", None),
-        "time_control": headers.get("TimeControl"),
-        "termination": headers.get("Termination"),
-    }
+
+    game_dict = {}
+    for column, column_type in GAME_COLUMNS.items():
+        value = headers.get(column)
+        if column_type == "INT": value = int(value)
+        game_dict[column] = value
+
+    return game_dict
