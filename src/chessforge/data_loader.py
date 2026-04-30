@@ -3,7 +3,7 @@ import zstandard as zstd
 
 from io import StringIO
 
-from chessforge_analytics.utils import int_or_none
+from chessforge.utils import int_or_none
 
 
 def stream_pgn_zst(file_path):

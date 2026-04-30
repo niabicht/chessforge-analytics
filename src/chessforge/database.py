@@ -2,7 +2,7 @@ import psycopg2
 import time
 
 
-def connect():
+def connect_to_database():
     return psycopg2.connect(
         host="database_service",
         database="database",
@@ -11,11 +11,11 @@ def connect():
     )
 
 
-def connect_or_wait(retries=10, delay=2):
+def connect_to_database_or_wait(retries=10, delay=2):
     connection = None
     for i in range(retries):
         try:
-            connection = connect()
+            connection = connect_to_database()
             return connection
         except Exception as e:
             print(f"DB not ready yet (attempt {i+1}/{retries})")
@@ -72,7 +72,7 @@ def insert_games(connection, games: list[dict]):
     connection.commit()
 
 
-def flush_games_batch(connection, batch):
+def flush_games_batch_into_database(connection, batch):
     insert_games(connection, batch)
     print(f"Inserted game batch of length {len(batch)}")
     batch.clear()

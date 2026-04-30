@@ -8,10 +8,16 @@ services:
       POSTGRES_DB: database
     ports:
       - "5432:5432"
+    volumes:
+      # Persist the database data in a Docker volume to ensure data is not lost when the container is stopped
+      - database_data:/var/lib/postgresql
 
   app:
     build: .
     volumes:
-      - ./data:/app/data  
+      - ./data:/app/data
     depends_on:
       - database_service
+
+volumes:
+  database_data:
