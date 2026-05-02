@@ -41,6 +41,9 @@ def initialize_database(connection):
     connection.commit()
 
 
+# NOTE: This uses executemany() for simplicity and readability.
+# For large-scale ingestion (e.g. full Lichess dumps), this can become a bottleneck.
+# Consider switching to PostgreSQL COPY for significantly faster bulk inserts if performance becomes an issue.
 def insert_games(connection, games: list[dict]):
     """Inserts a batch of games into the database, based on the GAME_COLUMNS definition."""
     columns = list(GAME_COLUMNS.keys())
@@ -64,5 +67,4 @@ def insert_games(connection, games: list[dict]):
 
 def flush_games_batch_into_database(connection, batch):
     insert_games(connection, batch)
-    print(f"Inserted game batch of length {len(batch)}")
     batch.clear()
