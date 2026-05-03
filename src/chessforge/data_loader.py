@@ -1,9 +1,9 @@
 import chess.pgn
 import os
-from tqdm import tqdm
 import zstandard as zstd
 
 from io import StringIO
+from tqdm import tqdm
 
 from chessforge.global_constants import GAME_COLUMNS
 from chessforge.utils import int_or_none

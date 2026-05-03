@@ -1,11 +1,14 @@
 import os
+import requests
 import typer
 import zstandard as zstd
+
+from tqdm import tqdm
 
 from chessforge.data_loader import stream_pgn_zst, parse_game_string_into_dict
 from chessforge.database import get_initialized_connection, flush_games_batch_into_database, dataset_exists, create_dataset, update_dataset_game_count, delete_dataset
 from chessforge.global_constants import LICHESS_PGN_FILE_NAME_PREFIX, EXAMPLE_FILE_NAME, PATH_DATA_RAW, PATH_EXAMPLE_FILE
-from chessforge.utils import is_lichess_pgn_file, reservoir_sample_from_stream
+from chessforge.utils import build_lichess_name, echo_file_with_size, generate_past_months, is_lichess_pgn_file, remote_file_exists, reservoir_sample_from_stream
 
 
 app = typer.Typer(help="Chessforge Analytics CLI")
@@ -21,7 +24,7 @@ def ingest_example():
 
 def ingest_shared(month: str | None, example: bool):
     """Ingests a single month's PGN file into the database. If example=True, ingests the example dataset instead."""
-    dataset_name = "example_games" if example else f"{LICHESS_PGN_FILE_NAME_PREFIX}_{month}"
+    dataset_name = EXAMPLE_FILE_NAME if example else build_lichess_name(month)
     file_path = os.path.join(PATH_DATA_RAW, f"{dataset_name}.pgn.zst") if not example else PATH_EXAMPLE_FILE
     if not os.path.exists(file_path):
         typer.echo(f"File {file_path} not found. Returning.")
@@ -66,6 +69,7 @@ def ingest_shared(month: str | None, example: bool):
     typer.echo(f"Ingested {game_counter} games for {dataset_name}")
 
 
+# TODO create the example file again and also remove it from gitignore
 @app.command()
 def create_example_file(
     input_file_path: str = typer.Option(
@@ -74,14 +78,10 @@ def create_example_file(
     ),
     n: int = typer.Option(
         1000,
-        "--n", "-n",
         help="Number of games to sample"
     ),
 ):
-    """
-    Creates a random sample of PGN games using reservoir sampling
-    and writes them to a file.
-    """
+    """Creates a random sample of PGN games using reservoir sampling and writes them to a file."""
 
     typer.echo(f"Sampling {n} games from {input_file_path}...")
 
@@ -137,7 +137,7 @@ def datasets_delete(month: str = None, all: bool = False, example: bool = False)
     else:
         if not month: raise typer.BadParameter("Provide --month or --all")
 
-        dataset_name = f"{LICHESS_PGN_FILE_NAME_PREFIX}_{month}"
+        dataset_name = build_lichess_name(month)
         success = delete_dataset(connection, dataset_name)
 
         if success: typer.echo(f"Deleted dataset {month}")
@@ -152,11 +152,18 @@ def files_list():
         typer.echo("No raw data directory.")
         return
 
-    files = [file for file in os.listdir(PATH_DATA_RAW) if is_lichess_pgn_file(file)]
-    typer.echo("Files:" if files else "Files: none")
-    for file in os.listdir(PATH_DATA_RAW):
-        size = os.path.getsize(os.path.join(PATH_DATA_RAW, file)) / (1024**3)
-        typer.echo(f"{file} | {size:.2f} GiB")
+    files = os.listdir(PATH_DATA_RAW)
+    pgn_files = [f for f in files if is_lichess_pgn_file(f)]
+    tmp_files = [f for f in files if f.endswith(".tmp")]
+
+    typer.echo("Data files:")
+    for file in pgn_files:
+        echo_file_with_size(PATH_DATA_RAW, file)
+
+    if tmp_files:
+        typer.echo("\nIncomplete downloads:")
+        for file in tmp_files:
+            echo_file_with_size(PATH_DATA_RAW, file)
 
 
 @app.command()
@@ -174,16 +181,88 @@ def files_delete(month: str = None, all: bool = False):
 
     if not month: raise typer.BadParameter("Provide --month or --all")
 
-    filename = f"{LICHESS_PGN_FILE_NAME_PREFIX}_{month}.pgn.zst"
-    path = os.path.join(PATH_DATA_RAW, filename)
+    filename = build_lichess_name(month, use_file_extension=True)
+    file_path = os.path.join(PATH_DATA_RAW, filename)
 
-    if os.path.exists(path):
-        os.remove(path)
+    if os.path.exists(file_path):
+        os.remove(file_path)
         typer.echo(f"Deleted {filename}.")
     else:
         typer.echo(f"File {filename} not found.")
 
 
+@app.command()
+def files_cleanup():
+    if all:
+        confirm = typer.confirm("Delete all .tmp files?")
+        if not confirm: raise typer.Abort()
+
+        for file in os.listdir(PATH_DATA_RAW):
+            if file.endswith(".tmp"):
+                os.remove(os.path.join(PATH_DATA_RAW, file))
+
+        typer.echo("All .tmp files deleted.")
+
+
+@app.command()
+def download(
+    month: str = typer.Option(None),
+    latest: bool = typer.Option(False),
+):
+    """Downloads a Lichess PGN dump."""
+
+    if latest and month: raise typer.BadParameter("Use either --month or --latest, not both")
+    if not latest and not month: raise typer.BadParameter("Provide --month or use --latest")
+
+    if latest:
+        # find the latest month by checking which files are available on the server
+        for candidate in generate_past_months():
+            filename = build_lichess_name(candidate, use_file_extension=True)
+            url = f"https://database.lichess.org/standard/{filename}"
+            typer.echo(f"Checking {candidate}...")
+            if remote_file_exists(url): 
+                month = candidate
+                typer.echo(f"Latest dataset found: {month}")
+                break
+
+    # if still no month, it means we couldn't find any dataset in the last 12 months
+    if not month:
+        typer.BadParameter("No dataset found in the last 12 months")
+    
+    filename = build_lichess_name(month, use_file_extension=True)
+    file_path = os.path.join(PATH_DATA_RAW, filename)
+    tmp_path = file_path + ".tmp"
+
+    os.makedirs(PATH_DATA_RAW, exist_ok=True)
+
+    if os.path.exists(file_path):
+        typer.echo(f"File {filename} already exists. Returning.")
+        return
+
+    url = f"https://database.lichess.org/standard/{filename}"
+    typer.echo(f"Downloading from {url}")
+
+    response = requests.get(url, stream=True)
+    if response.status_code != 200:
+        typer.echo(f"Failed to download file. Status: {response.status_code}")
+        raise typer.Abort()
+
+    file_size = response.headers.get("content-length")
+    file_size = int(file_size) if file_size else None
+
+    with open(tmp_path, "wb") as f:
+        with tqdm(total=file_size, unit="B", unit_scale=True) as progress_bar:
+            for chunk in response.iter_content(chunk_size=1048576): # 1 MiB
+                if chunk:
+                    f.write(chunk)
+                    progress_bar.update(len(chunk))
+
+    os.replace(tmp_path, file_path)
+
+    typer.echo(f"Downloaded {filename}")
+
+
+# NOTE these are just some preliminary queries for testing
 @app.command()
 def stats(stat_type: str):
     """Preliminary stats commands to query the database."""

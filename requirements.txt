@@ -1,5 +1,6 @@
 psycopg2-binary
 python-chess
+requests
 tqdm
 typer[all]
 zstandard

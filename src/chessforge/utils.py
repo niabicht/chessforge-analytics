@@ -1,5 +1,10 @@
+import os
 import random
+import requests
 import re
+import typer
+
+from datetime import datetime
 
 from chessforge.global_constants import LICHESS_PGN_FILE_NAME_PREFIX
 
@@ -8,8 +13,39 @@ def int_or_none(value):
     try: return int(value)
     except: return None
 
+
+def generate_past_months(n: int = 12):
+    now = datetime.now()
+    year = now.year
+    month = now.month
+
+    for _ in range(n):
+        yield f"{year:04d}-{month:02d}"
+
+        month -= 1
+        if month == 0:
+            month = 12
+            year -= 1
+
+
+def remote_file_exists(url: str) -> bool:
+    response = requests.head(url)
+    return (response.status_code == 200)
+
+
 def is_lichess_pgn_file(file_name: str) -> bool:
     return (file_name.startswith(LICHESS_PGN_FILE_NAME_PREFIX) and file_name.endswith(".pgn.zst"))
+
+
+def build_lichess_name(month: str, use_file_extension: bool = False) -> str:
+    name = f"{LICHESS_PGN_FILE_NAME_PREFIX}_{month}"
+    return f"{name}.pgn.zst" if use_file_extension else name            
+
+
+def echo_file_with_size(path, file_name):
+    size_gib = os.path.getsize(os.path.join(path, file_name)) / (1024**3)
+    typer.echo(f"{file_name} ({size_gib:.2f} GiB)")
+
 
 def camel_to_snake(name: str) -> str:
     """
