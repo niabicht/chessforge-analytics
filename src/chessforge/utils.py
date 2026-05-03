@@ -1,11 +1,15 @@
 import random
 import re
 
+from chessforge.global_constants import LICHESS_PGN_FILE_NAME_PREFIX
+
 
 def int_or_none(value):
     try: return int(value)
     except: return None
 
+def is_lichess_pgn_file(file_name: str) -> bool:
+    return (file_name.startswith(LICHESS_PGN_FILE_NAME_PREFIX) and file_name.endswith(".pgn.zst"))
 
 def camel_to_snake(name: str) -> str:
     """
@@ -42,6 +46,7 @@ def reservoir_sample_from_stream(stream, k: int):
             # Phase 1: fill the reservoir with first k items
             sample.append(item)
         else:
+            break # TODO remove, just for testing
             # Phase 2: replace elements with decreasing probability
             # i is current index (0-based)
             # j is random position in [0, i]

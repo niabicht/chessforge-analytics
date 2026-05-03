@@ -24,11 +24,11 @@ def stream_pgn_zst(file_path):
         game_counter = 0
 
         while True:
-            chunk_size = 65536 # 65536 = 64 KB. don't make it smaller than one single game, so AT LEAST 8 KB    
+            chunk_size = 65536 # 65536 = 64 KB
             chunk = stream_reader.read(chunk_size)
             if not chunk: break
 
-            buffer += chunk.decode("utf-8", errors="ignore")
+            buffer += chunk.decode("utf-8")
             lines = buffer.split("\n")
             buffer = lines[-1]
 
