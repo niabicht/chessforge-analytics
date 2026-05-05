@@ -6,7 +6,7 @@ import sys
 cmd = [
     "docker", "compose", "run", "--rm",
     "app",
-    "python", "-m", "chessforge.main"
+    "python","-m", "chessforge.cli"
 ] + sys.argv[1:]
 
 subprocess.run(cmd, check=True)
