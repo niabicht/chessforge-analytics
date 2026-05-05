@@ -1,3 +1,5 @@
+from psycopg2.extras import RealDictCursor
+
 from chessforge.utils.global_constants import GAME_COLUMNS
 from chessforge.utils.utils import camel_to_snake
 
@@ -82,3 +84,19 @@ def delete_dataset(connection, dataset_name: str, log=lambda _: None) -> None:
 
     connection.commit()
     log(f"Dataset {dataset_name} deleted.")
+
+def execute_query(connection, sql_query: str):
+    with connection.cursor() as cursor:
+        cursor.execute(sql_query)
+        results = cursor.fetchall()
+    return results
+
+def execute_query(connection, sql_query: str, params: dict = None):
+    # can later maybe be used with something like
+    # params = {
+    #     "min_elo": 1800,
+    #     "max_elo": 2000
+    # }
+    with connection.cursor(cursor_factory=RealDictCursor) as cursor: # RealDictCursor returns query results as dicts keyed by column names
+        cursor.execute(sql_query, params or ())
+        return cursor.fetchall()

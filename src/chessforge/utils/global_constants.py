@@ -4,6 +4,7 @@ PATH_DATA_RAW = "data/raw/"
 LICHESS_PGN_FILE_NAME_PREFIX = "lichess_db_standard_rated"
 INPUT_FILE_EXTENSION = ".pgn.zst"
 LICHESS_DUMP_URL = "https://database.lichess.org/standard"
+PATH_QUERY_FOLDER = "src/chessforge/queries"
 
 # This is used for parsing the PGN files.
 # Keys need to match the PGN headers

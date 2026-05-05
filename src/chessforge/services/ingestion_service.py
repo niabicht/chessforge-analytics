@@ -8,7 +8,7 @@ from chessforge.ingestion.streamer import stream_pgn_zst
 from chessforge.ingestion.parser import parse_game_string_into_dict
 
 
-def validate_ingestion(file_path) -> tuple[bool, str]:
+def validate_ingestion(file_path) -> tuple[bool, str]: # TODO bass message via log callback instead of return
     if not os.path.exists(file_path):
         error_message = f"File {file_path} not found."
         return False, error_message

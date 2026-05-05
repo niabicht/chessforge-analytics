@@ -70,6 +70,12 @@ def camel_to_snake(name: str) -> str:
 
     return s2.lower()
 
+def kebab_to_snake(name: str) -> str:
+    return name.replace("-", "_")
+
+def snake_to_kebab(name: str) -> str:
+    return name.replace("_", "-")
+
 def generate_past_months(n: int = 12) -> Iterator[str]:
     now = datetime.now()
     year = now.year

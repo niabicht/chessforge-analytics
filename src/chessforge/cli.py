@@ -5,6 +5,7 @@ from chessforge.utils.utils import get_path_example_file, get_example_dataset_na
 import chessforge.services.input_file_service as input_file_service
 import chessforge.services.ingestion_service as ingestion_service
 import chessforge.services.dataset_service as dataset_service
+import chessforge.services.query_service as query_service
 
 
 app = typer.Typer(help="Chessforge Analytics CLI")
@@ -131,57 +132,13 @@ def datasets_delete(
 ### SQL query
 #############
 
-
-# # NOTE these are just some preliminary queries for testing
-# # will be replaced later by maybe LLM interface or at least be strongly refactored anyway
-# @app.command()
-# def stats(stat_type: str):
-#     """Preliminary stats commands to query the database."""
-#     connection = get_initialized_connection()
-# 
-#     with connection.cursor() as cursor:
-#         if stat_type == "openings":
-#             cursor.execute("""
-#                 SELECT opening, COUNT(*) 
-#                 FROM games 
-#                 GROUP BY opening 
-#                 ORDER BY COUNT(*) DESC 
-#                 LIMIT 10;
-#             """)
-# 
-#         elif stat_type == "ratings":
-#             cursor.execute("""
-#                 SELECT AVG(white_elo), AVG(black_elo) FROM games;
-#             """)
-# 
-#         elif stat_type == "results":
-#             cursor.execute("""
-#                 SELECT result, COUNT(*) 
-#                 FROM games 
-#                 GROUP BY result;
-#             """)
-# 
-#         elif stat_type == "number":
-#             cursor.execute("""
-#                 SELECT COUNT(*) FROM games;
-#             """)
-# 
-#         elif stat_type == "debug":
-#             cursor.execute("""
-#                 SELECT column_name
-#                     FROM information_schema.columns
-#                     WHERE table_name = 'games';
-#             """)
-# 
-#         else:
-#             raise typer.BadParameter("Unknown stats type")
-# 
-#         results = cursor.fetchall()
-# 
-#     connection.close()
-# 
-#     for row in results:
-#         typer.echo(row)
+@app.command()
+def query(name: str = typer.Option(..., help=f"Name of predefined query. Available queries: {query_service.list_query_names()}")): # NOTE this message is evaluated at compile time. If later queries are added during run time, maybe instead do something generic like "Use `queries-list` to see options." with a corresponding separate cli command
+    if not query_service.validate_query(name, log=typer.echo): return
+    
+    results = query_service.run_query(name)
+    for row in results:
+        typer.echo(row)
 
 
 if __name__ == "__main__":
