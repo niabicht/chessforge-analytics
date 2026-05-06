@@ -28,7 +28,13 @@ def find_latest_lichess_dump_month(n_months: int) -> str | None:
 
 def download_lichess_dump_file(file_name: str, log=lambda message: None, on_progress = lambda progress, total_size: None, on_done=lambda: None) -> bool:   
     """
-    TODO
+    Download a Lichess monthly dump file by name and save it to the raw data directory.
+
+    Uses a temporary filename during download.
+    Progress is reported per chunk via on_progress(bytes, total).
+
+    Returns:
+        bool: True on success, False if the file already exists or the request fails.
     """
 
     # Hanlde paths

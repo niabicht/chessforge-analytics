@@ -30,7 +30,14 @@ def connect_to_database_or_wait(n_retries=10, delay=0.5) -> psycopg2.extensions.
 
 class InitializedConnection:
     """
-    TODO
+    Context manager that opens a PostgreSQL connection and ensures the schema exists.
+
+    On entry: Connects with retry logic (handles Docker startup race conditions).
+    On exit: Closes the connection regardless of whether an exception occurred.
+
+    Usage:
+        with InitializedConnection() as connection:
+            repository.some_function(connection, ...)
     """
 
     def __enter__(self) -> psycopg2.extensions.connection:

@@ -9,7 +9,12 @@ from chessforge.utils.utils import int_or_none
 
 def parse_game_string_into_dict(pgn_text: str) -> dict[str, Any]:
     """
-    TODO (dict has colum as key and value of whatever type)
+    Parses a single pgn game string:
+    Column names and types are defined by GAME_COLUMNS
+    Casts types (e.g., String to Int) to match the database schema.
+
+    Returns:
+        dict: with columns as keys.
     """
 
     game = chess.pgn.read_game(StringIO(pgn_text))

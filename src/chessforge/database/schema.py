@@ -6,7 +6,10 @@ from chessforge.utils.utils import mixed_to_snake
 
 def initialize_database(connection: psycopg2.extensions.connection) -> None:
     """
-    TODO
+    Database setup, if they do not exist:
+    Creates the 'datasets' metadata table.
+    Creates the 'games' data table.
+    Ensuring the schema is synchronized with GAME_COLUMNS.
     """
 
     # Determine the game table columns from single source of truth

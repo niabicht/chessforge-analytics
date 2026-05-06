@@ -29,6 +29,13 @@ def validate_ingestion(ingest_example: bool, month: str, log=lambda message: Non
 
         
 def ingest_file(ingest_example: bool, month, on_progress = lambda progress, games: None, on_done=lambda: None) -> bool:
+    """
+    Orchestrates the ETL process: 
+    Streams compressed PGN data.
+    Parses game headers into structured dictionaries.
+    Bulk inserts into the database.
+    """
+
     # Determine file path
     file_path = get_path_example_file() if ingest_example else get_path_lichess_file(month)
 
