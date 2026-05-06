@@ -14,8 +14,7 @@ def parse_game_string_into_dict(pgn_text: str) -> dict[str, Any]:
 
     game = chess.pgn.read_game(StringIO(pgn_text))
     if game is None:
-        print(f"WARNING: could not parse PGN: {pgn_text[:100]}") # Should not happen # TODO refactor according to log rules
-        return None
+        raise ValueError(f"Could not parse PGN: {pgn_text[:100]}")
 
     headers = game.headers
 

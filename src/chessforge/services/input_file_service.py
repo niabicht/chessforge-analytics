@@ -1,5 +1,4 @@
 import os
-from typing import Callable
 
 import zstandard as zstd
 
@@ -16,25 +15,28 @@ from chessforge.utils.utils import (
     build_lichess_name, 
     is_input_lichess_file, 
     get_file_size_string, 
+    contains_incomplete_download,
 )
 
 
-def create_example_file(n_games: int, log=lambda _: None) -> None:
+def create_example_file(n_games: int, log=lambda message: None, on_progress=lambda progress: None, on_done=lambda: None) -> bool:
     # Find input file
     input_path = None
-    for month in get_recent_months_string_generator():
+    n_months = 60
+    for month in get_recent_months_string_generator(n_months):
         if does_local_input_file_exist(month):
             input_path = get_path_lichess_file(month)
             break
     if not input_path:
-        log("No local input file found. Aborting.")
-        return    
+        log(f"No local input file found for the last {n_months}.")
+        return False 
 
     # Get the example games
-    stream = streamer.stream_pgn_zst_generator(input_path)
+    stream = streamer.stream_pgn_zst_generator(input_path, on_progress=on_progress, on_done=on_done)
     sampled_games = reservoir_sample_from_stream(stream, n_games) # all loaded into memory simultaniously
 
     # Write to compressed output file
+    log("Writing to file...")
     output_path = get_path_example_file()
     with open(output_path, "wb") as file:
         compressor = zstd.ZstdCompressor(level=20)
@@ -42,51 +44,55 @@ def create_example_file(n_games: int, log=lambda _: None) -> None:
             for game in sampled_games:
                 writer.write((game + "\n\n").encode("utf-8"))
 
-    log(f"Saved example file to {output_path}")
+    log(f"Saved example file to {output_path}.")
+    return True
 
 
-def get_all_files_string() -> None:
+def list_files(log=lambda message: None, on_all_files=lambda has_incomplete_download: None) -> bool:
     ensure_data_dir_exists(PATH_DATA_RAW)
 
-    # Find all input files
     files = os.listdir(PATH_DATA_RAW)
-    file_names_pgn = [file for file in files if is_input_lichess_file(file)]
-    file_names_tmp = [file for file in files if (file.startswith("download") and file.endswith(".tmp"))]
+    pgn_files = [f for f in files if is_input_lichess_file(f)]
+    tmp_files = [f for f in files if contains_incomplete_download(f)]
 
-    # Add good files
-    all_files_string = "Data files:"
-    if not file_names_pgn: all_files_string += "\nNone"
-    for file_name in file_names_pgn:
-        size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
-        all_files_string += f"\n{file_name} ({size})"
-        
-    # Add incomplete downloads
-    if file_names_tmp: all_files_string += "\n\nIncomplete downloads:"
-    for file_name in file_names_tmp:
-        size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
-        all_files_string += f"\n{file_name} ({size})"
+    output = "Data files:"
+    if not pgn_files: output += "\nNone"
+    else:
+        for file_name in pgn_files:
+            size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
+            output += f"\n{file_name} ({size})"
 
-    return all_files_string
+    if tmp_files:
+        output += "\n\nIncomplete downloads:"
+        for file_name in tmp_files:
+            size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
+            output += f"\n{file_name} ({size})"
+
+    log(output)
+    on_all_files(len(tmp_files) > 0)
+
+    return True
 
 
-def download(month: str = None, download_latest: bool = False, log=lambda _: None, on_progress: Callable[[int, int], None] = None) -> bool:
+def download(month: str = None, download_latest: bool = False, log=lambda message: None, on_progress = lambda progress, total_size: None, on_done=lambda: None) -> bool:
     if download_latest:
         # Find month of latest Lichess dump
-        month = downloader.find_latest_lichess_dump_month()
+        n_months = 12
+        month = downloader.find_latest_lichess_dump_month(n_months)
         if not month:
-            log("No dataset found in the last 12 months.")
+            log(f"No dataset found in the last {n_months} months.")
             return False
         log(f"Latest dataset found: {month}")
 
     # Handle local path and download
     ensure_data_dir_exists(PATH_DATA_RAW)
-    filename = build_lichess_name(month, add_file_extension=True)
-    success = downloader.download_lichess_dump_file(filename=filename, log=log, on_progress=on_progress)
+    file_name = build_lichess_name(month, add_file_extension=True)
+    is_success = downloader.download_lichess_dump_file(file_name, log=log, on_progress=on_progress, on_done=on_done)
 
-    return success
+    return is_success
 
 
-def delete_files(all: bool = False, month: str = None, log=lambda _: None) -> None:
+def delete_files(all: bool = False, month: str = None, log=lambda message: None) -> bool:
     if all:
         deleted = 0
         for file in os.listdir(PATH_DATA_RAW):
@@ -95,24 +101,27 @@ def delete_files(all: bool = False, month: str = None, log=lambda _: None) -> No
                 deleted += 1
 
         log(f"Deleted {deleted} files.")
-        return
+        return True
 
     # Find and delete specific file
-    filename = build_lichess_name(month, add_file_extension=True)
-    file_path = os.path.join(PATH_DATA_RAW, filename)
+    file_name = build_lichess_name(month, add_file_extension=True)
+    file_path = os.path.join(PATH_DATA_RAW, file_name)
 
     if os.path.exists(file_path):
         os.remove(file_path)
-        log(f"Deleted {filename}.")
+        log(f"Deleted {file_name}.")
+        return True
     else:
-        log(f"File {filename} not found.")
+        log(f"File {file_name} not found.")
+        return False
 
 
-def delete_incomplete_downloads(log=lambda _: None) -> None:
+def delete_incomplete_downloads(log=lambda message: None) -> bool:
     deleted = 0
     for file in os.listdir(PATH_DATA_RAW):
-        if file.endswith(".tmp"):
+        if contains_incomplete_download(file):
             os.remove(os.path.join(PATH_DATA_RAW, file))
             deleted += 1
 
     log(f"Deleted {deleted} incomplete-download files.")
+    return True

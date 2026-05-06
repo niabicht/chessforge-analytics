@@ -1,17 +1,20 @@
 import chessforge.database.connections as connections
 import chessforge.database.repository as repository
+from chessforge.utils.utils import get_example_dataset_name, build_lichess_name
 
 
-def get_datasets_string() -> str: # TODO log directly via callback
+def log_datasets(log=lambda message: None) -> bool:
     # Get info from database
-    connection = connections.get_initialized_connection()
-    rows = repository.get_datasets_info(connection)
+    rows = []
+    with connections.InitializedConnection() as connection:
+        rows = repository.get_datasets_info(connection)
 
     # Start the string
     datasets_string = "Datasets:"
     if not rows:
         datasets_string += "\nNone"
-        return datasets_string
+        log(datasets_string)
+        return True
 
     # Add line for every dataset
     n_games_total = 0
@@ -23,19 +26,20 @@ def get_datasets_string() -> str: # TODO log directly via callback
     
     datasets_string += f"\nTotal games: {n_games_total}"
 
-    connection.close()
-    return datasets_string
+    log(datasets_string)
+    return True
 
 
-def delete_dataset(all: bool = False, dataset_name: str = None, log=lambda _: None) -> None:
-    connection = connections.get_initialized_connection()
+def delete_dataset(all: bool, example: bool, month: str, log=lambda message: None) -> bool:   
 
-    if all:
-        repository.delete_all_datasets(connection)
-        log("All datasets deleted.")
-    elif dataset_name:
-        repository.delete_dataset(connection, dataset_name, log)
+    with connections.InitializedConnection() as connection:
+        if all:
+            repository.delete_all_datasets(connection)
+            log("All datasets deleted.")
+        else:
+            dataset_name = get_example_dataset_name() if example else build_lichess_name(month)  
+            repository.delete_dataset(connection, dataset_name, log)
 
-    connection.close()
+    return True
 
 

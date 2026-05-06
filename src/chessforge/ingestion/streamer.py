@@ -1,9 +1,9 @@
-from typing import Callable, Iterator
+from typing import Iterator
 
 import zstandard as zstd
 
 
-def stream_pgn_zst_generator(file_path: str, on_progress: Callable[[int], None] = None) -> Iterator[str]:
+def stream_pgn_zst_generator(file_path: str, on_progress = lambda progress: None, on_done=lambda: None) -> Iterator[str]:
     """
     Stream a compressed Lichess .pgn.zst file, yielding one game at a time as string.
     The file is decompressed and processed in chunks to avoid loading it fully into memory.
@@ -29,7 +29,7 @@ def stream_pgn_zst_generator(file_path: str, on_progress: Callable[[int], None] 
             chunk_size = 65536 # 65536 = 64 KB
             chunk = stream_reader.read(chunk_size)
             if not chunk: break
-            if on_progress: on_progress(len(chunk))
+            on_progress(len(chunk))
 
             # Decode into string lines
             buffer += chunk.decode("utf-8")
@@ -47,3 +47,5 @@ def stream_pgn_zst_generator(file_path: str, on_progress: Callable[[int], None] 
         # After the loop, the last game will not have been yielded. So lets do that.
         if current_game:
             yield current_game.strip()
+
+    on_done()

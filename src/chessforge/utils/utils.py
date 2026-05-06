@@ -6,10 +6,12 @@ from typing import Iterator
 
 from chessforge.utils.global_constants import (
     PATH_EXAMPLE_FOLDER, 
-    NAME_EXAMPLE_FILE, 
     PATH_DATA_RAW, 
-    LICHESS_PGN_FILE_NAME_PREFIX, 
-    INPUT_FILE_EXTENSION
+    NAME_EXAMPLE_FILE, 
+    PREFIX_LICHESS_PGN_FILE, 
+    PREFIX_DOWNLOAD_TMP_FILE,
+    EXTENSION_INPUT_FILE,
+    EXTENSION_DOWNLOAD_TMP_FILE,
 )
 
 
@@ -18,7 +20,7 @@ from chessforge.utils.global_constants import (
 ##############
 
 def get_path_example_file() -> str:
-    return os.path.join(PATH_EXAMPLE_FOLDER, NAME_EXAMPLE_FILE + INPUT_FILE_EXTENSION)
+    return os.path.join(PATH_EXAMPLE_FOLDER, NAME_EXAMPLE_FILE + EXTENSION_INPUT_FILE)
 
 def get_example_dataset_name() -> str:
     return NAME_EXAMPLE_FILE
@@ -28,15 +30,15 @@ def get_path_lichess_file(month: str) -> str:
     return os.path.join(PATH_DATA_RAW, file_name)
 
 def build_lichess_name(month: str, add_file_extension: bool = False) -> str:
-    name = f"{LICHESS_PGN_FILE_NAME_PREFIX}_{month}"
-    if add_file_extension: name += INPUT_FILE_EXTENSION
+    name = f"{PREFIX_LICHESS_PGN_FILE}{month}"
+    if add_file_extension: name += EXTENSION_INPUT_FILE
     return name   
 
 def get_dataset_name_from_file_path(file_path: str) -> str:
-    return file_path.split("/")[-1].replace(INPUT_FILE_EXTENSION, "")
+    return file_path.split("/")[-1].replace(EXTENSION_INPUT_FILE, "")
 
 def is_input_lichess_file(file_name: str) -> bool:
-    return (file_name.startswith(LICHESS_PGN_FILE_NAME_PREFIX) and file_name.endswith(INPUT_FILE_EXTENSION))
+    return (file_name.startswith(PREFIX_LICHESS_PGN_FILE) and file_name.endswith(EXTENSION_INPUT_FILE))
 
 def does_local_input_file_exist(month: str) -> bool:
     file_path = get_path_lichess_file(month)
@@ -75,7 +77,7 @@ def kebab_to_snake(string: str) -> str:
 def snake_to_kebab(string: str) -> str:
     return string.replace("_", "-")
 
-def get_recent_months_string_generator(n: int = 12) -> Iterator[str]:
+def get_recent_months_string_generator(n: int) -> Iterator[str]:
     now = datetime.now()
     year = now.year
     month = now.month
@@ -87,8 +89,12 @@ def get_recent_months_string_generator(n: int = 12) -> Iterator[str]:
         if month == 0:
             month = 12
             year -= 1
-        
-            
+
+def get_download_tmp_file_name(file_name: str) -> str:
+    return (PREFIX_DOWNLOAD_TMP_FILE + file_name + EXTENSION_DOWNLOAD_TMP_FILE)
+         
+def contains_incomplete_download(string: str) -> bool:
+    return (PREFIX_DOWNLOAD_TMP_FILE in string and EXTENSION_DOWNLOAD_TMP_FILE in string)       
 
 #############################
 ### Random and Sampling Utils

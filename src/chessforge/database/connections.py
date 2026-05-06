@@ -15,23 +15,28 @@ def connect_to_database() -> psycopg2.extensions.connection:
     )
 
 
-def connect_to_database_or_wait(retries=10, delay=0.5) -> psycopg2.extensions.connection:
+def connect_to_database_or_wait(n_retries=10, delay=0.5) -> psycopg2.extensions.connection:
     # Try to connect to the database, and if it fails, waits and retry for a specified number of times.
     connection = None
-    for i in range(retries):
+    for i in range(n_retries):
         try:
             connection = connect_to_database()
             return connection
         except Exception:
-            print(f"DB not ready yet (attempt {i+1}/{retries})") # TODO refactor to log rules
             time.sleep(delay)
 
-    raise Exception("Could not connect to database after retries")
+    raise Exception(f"Could not connect to database after {n_retries} retries.")
 
 
-def get_initialized_connection() -> psycopg2.extensions.connection:
-    """Returns a database connection and ensures that the database schema is initialized."""    
-    connection = connect_to_database_or_wait()
-    schema.initialize_database(connection)
+class InitializedConnection:
+    """
+    TODO
+    """
 
-    return connection
+    def __enter__(self) -> psycopg2.extensions.connection:
+        self.connection = connect_to_database_or_wait()
+        schema.initialize_database(self.connection)
+        return self.connection
+
+    def __exit__(self, _, __, ___) -> None:
+        self.connection.close()

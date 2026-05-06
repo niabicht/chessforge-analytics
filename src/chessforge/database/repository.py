@@ -1,6 +1,7 @@
 from typing import Any
 
 import psycopg2
+import psycopg2.extras
 
 from chessforge.utils.global_constants import GAME_COLUMNS
 from chessforge.utils.utils import mixed_to_snake
@@ -41,8 +42,8 @@ def flush_games_batch_into_database(connection: psycopg2.extensions.connection, 
     """
 
     # NOTE: This uses executemany() for simplicity and readability.
-    # For large-scale ingestion (e.g. full Lichess dumps), this can become a bottleneck.
     # Consider switching to PostgreSQL COPY for significantly faster bulk inserts if performance becomes an issue.
+    # However, parsing currently takes about 7 times longer anyway (2026-05-06)
 
     # TODO comment
     columns = list(GAME_COLUMNS.keys())
@@ -76,14 +77,13 @@ def update_dataset_game_count(connection: psycopg2.extensions.connection, datase
 
 
 def delete_all_datasets(connection: psycopg2.extensions.connection):
-    
     with connection.cursor() as cursor:
         cursor.execute("DELETE FROM games;")
         cursor.execute("DELETE FROM datasets;")
     connection.commit()
 
 
-def delete_dataset(connection, dataset_name: str, log=lambda _: None) -> None:
+def delete_dataset(connection, dataset_name: str, log=lambda message: None) -> None:
     with connection.cursor() as cursor:
         # Find dataset
         cursor.execute("SELECT id FROM datasets WHERE name = %s;", (dataset_name,))
@@ -101,7 +101,10 @@ def delete_dataset(connection, dataset_name: str, log=lambda _: None) -> None:
     log(f"Dataset {dataset_name} deleted.")
 
 
-def execute_query(connection: psycopg2.extensions.connection, sql_query: str, params: dict = None) -> list[dict[str, Any]]:
+def execute_query_return_result(connection: psycopg2.extensions.connection, sql_query: str, params: dict = None) -> list[dict[str, Any]]:
+    """
+    TODO return lines as dicht with rows as keys
+    """
     # Can later maybe be used with something like
     # params = {
     #     "min_elo": 1800,
