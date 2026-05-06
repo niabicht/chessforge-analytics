@@ -44,10 +44,6 @@ def flush_games_batch_into_database(connection: psycopg2.extensions.connection, 
     Caller's games batch list is cleared.
     """
 
-    # NOTE: This uses executemany() for simplicity and readability.
-    # Consider switching to PostgreSQL COPY for significantly faster bulk inserts if performance becomes an issue.
-    # However, parsing currently takes about 7 times longer anyway (2026-05-06)
-
     # Prepare columns and placeholders
     columns = list(GAME_COLUMNS.keys())
     columns_snake = [mixed_to_snake(column) for column in columns]

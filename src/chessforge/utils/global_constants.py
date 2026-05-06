@@ -30,3 +30,4 @@ GAME_COLUMNS = {
 # number of moves
 # board after X turns
 # material after X turns
+# engine rating when available (6% of games apparently)

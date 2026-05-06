@@ -52,9 +52,8 @@ def ingest_file(ingest_example: bool, month, on_progress = lambda progress, game
         def on_stream_progress(bytes_progress: int):
             on_progress(bytes_progress, game_counter)
 
-        # TODO optimize: batch parsing + multiprocessing, build custom (faster) parser, could also insert on a parralel threat
         for game_text in streamer.stream_pgn_zst_generator(file_path, on_progress=on_stream_progress): 
-            game = parser.parse_game_string_into_dict(game_text) # NOTE Rather slow. Could maybe parallelize.
+            game = parser.parse_game_string_into_dict(game_text)
             batch.append(game)
             game_counter += 1
 
