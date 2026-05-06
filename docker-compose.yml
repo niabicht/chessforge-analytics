@@ -1,23 +1,37 @@
 services:
   database_service:
     image: postgres:18
-    container_name: database_container
+
+    # Container name for easier debugging in docker tools
+    container_name: chessforge_database_container
+
+    # Database configuration
+    # Credentials are used by psycopg2 to connect to database
     environment:
       POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: 123456
-      POSTGRES_DB: database
+      POSTGRES_PASSWORD: 123456  # dev-only password, not for production use
+      POSTGRES_DB: chessforge_database
+
+    # Exposes DB to host machine (useful for tools like DBeaver)
     ports:
       - "5432:5432"
+
+    # Persistent storage so PostgreSQL data created in container survives container shutdowns
     volumes:
-      # Persist the database data in a Docker volume to ensure data is not lost when the container is stopped
-      - database_data:/var/lib/postgresql
+      - database_data:/var/lib/postgresql # not '/var/lib/postgresql/data' like in earlier postgres versions
+
 
   app:
     build: .
+
+    # Mount local data folder inside container
     volumes:
       - ./data:/app/data
+
+    # Ensure database starts before app container
     depends_on:
       - database_service
 
+# Named Docker volume used to persist PostgreSQL data
 volumes:
   database_data:
