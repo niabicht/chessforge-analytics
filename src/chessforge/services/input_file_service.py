@@ -22,13 +22,13 @@ from chessforge.utils.utils import (
 def create_example_file(n_games: int, log=lambda message: None, on_progress=lambda progress: None, on_done=lambda: None) -> bool:
     # Find input file
     input_path = None
-    n_months = 60
+    n_months = 999
     for month in get_recent_months_string_generator(n_months):
         if does_local_input_file_exist(month):
             input_path = get_path_lichess_file(month)
             break
     if not input_path:
-        log(f"No local input file found for the last {n_months}.")
+        log(f"No local input file found for the last {n_months} months.")
         return False 
 
     # Get the example games
