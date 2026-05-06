@@ -21,31 +21,44 @@ def stream_pgn_zst_generator(file_path: str, on_progress = lambda progress: None
         decompressor = zstd.ZstdDecompressor()
         stream_reader = decompressor.stream_reader(file)
 
-        buffer = ""
+        byte_buffer = b""
+        line_buffer = ""
         current_game = ""
 
         while True:
             # Get the next chunk
-            chunk_size = 65536 # 65536 = 64 KB
-            chunk = stream_reader.read(chunk_size)
+            chunk = stream_reader.read(65536)
             if not chunk: break
             on_progress(len(chunk))
 
-            # Decode into string lines
-            buffer += chunk.decode("utf-8")
-            lines = buffer.split("\n")
-            buffer = lines[-1] # The last line is likely incomplete and will be handled with the next chunk
+            # Accumulate bytes and decode, preserving incomplete multi-byte characters
+            byte_buffer += chunk
+            for trim in range(4):
+                end = len(byte_buffer) - trim
+                try:
+                    decoded = byte_buffer[:end].decode("utf-8") # Decode as much as possible... 
+                    byte_buffer = byte_buffer[end:] # ...keeping incomplete character as leftover
+                    break
+                except UnicodeDecodeError:
+                    continue
+
+            lines = (line_buffer + decoded).split("\n")
+            line_buffer = lines[-1] # The last line is likely incomplete and will be handled with the next chunk
 
             # Add lines to current game. When new game starts, yield the current game.
             for line in lines[:-1]:
                 if line.startswith("[Event") and current_game:
                     yield current_game.strip()
                     current_game = ""
-
                 current_game += line + "\n"
 
+        # Flush
+        remaining = line_buffer + byte_buffer.decode("utf-8", errors="replace")
+        for line in remaining.split("\n"):
+            current_game += line + "\n"
+
         # After the loop, the last game will not have been yielded. So lets do that.
-        if current_game:
+        if current_game.strip():
             yield current_game.strip()
 
     on_done()
