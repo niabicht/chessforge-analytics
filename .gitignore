@@ -1,3 +1,24 @@
-.venv/
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.sln
+*.iml
+
+# Local data 
 data/*
-# !data/example/
+*.zst
+*.pgn
+
+# Add back example file
+!data/example/
+!data/example/example_games.pgn.zst
