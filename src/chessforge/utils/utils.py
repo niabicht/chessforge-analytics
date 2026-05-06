@@ -4,7 +4,13 @@ import re
 from datetime import datetime
 from typing import Iterator
 
-from chessforge.utils.global_constants import PATH_EXAMPLE_FOLDER, NAME_EXAMPLE_FILE, PATH_DATA_RAW, LICHESS_PGN_FILE_NAME_PREFIX, INPUT_FILE_EXTENSION
+from chessforge.utils.global_constants import (
+    PATH_EXAMPLE_FOLDER, 
+    NAME_EXAMPLE_FILE, 
+    PATH_DATA_RAW, 
+    LICHESS_PGN_FILE_NAME_PREFIX, 
+    INPUT_FILE_EXTENSION
+)
 
 
 ##############
@@ -40,7 +46,7 @@ def get_file_size_string(file_path) -> str:
     size_gib = os.path.getsize(file_path) / (1024**3)
     return f"{size_gib:.2f} GiB"
 
-def ensure_data_dir_exists(path):
+def ensure_data_dir_exists(path) -> None:
     os.makedirs(path, exist_ok=True)
 
 
@@ -53,41 +59,35 @@ def int_or_none(value) -> int | None:
     try: return int(value)
     except: return None
 
-def camel_to_snake(name: str) -> str:
-    """
-    Converts CamelCase or mixedCase to snake_case.
+def mixed_to_snake(string: str) -> str:
+    # Insert underscore before capitalized words. E.g. "<anything>Xy" -> "<anything>_Xy" or "WhiteElo" -> "White_Elo"
+    string = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', string)
 
-    Examples:
-        WhiteElo -> white_elo
-        TimeControl -> time_control
-        ECO -> eco
-    """
-    # Handle transitions like "WhiteElo" -> "White_Elo"
-    s1 = re.sub(r'(.)([A-Z][a-z]+)', r'\1_\2', name)
+    # Insert underscore between remaining lowercase/digit that is followed by uppercase. E.g. "xYZ" -> "x_YZ" or "WhiteELO" -> "White_ELO"
+    string = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', string)
 
-    # Handle transitions like "ELOValue" -> "ELO_Value"
-    s2 = re.sub(r'([a-z0-9])([A-Z])', r'\1_\2', s1)
+    # Transform e.g. "White_Elo" to "white_elo"
+    return string.lower()
 
-    return s2.lower()
+def kebab_to_snake(string: str) -> str:
+    return string.replace("-", "_")
 
-def kebab_to_snake(name: str) -> str:
-    return name.replace("-", "_")
+def snake_to_kebab(string: str) -> str:
+    return string.replace("_", "-")
 
-def snake_to_kebab(name: str) -> str:
-    return name.replace("_", "-")
-
-def generate_past_months(n: int = 12) -> Iterator[str]:
+def get_recent_months_string_generator(n: int = 12) -> Iterator[str]:
     now = datetime.now()
     year = now.year
     month = now.month
 
     for _ in range(n):
-        yield f"{year:04d}-{month:02d}"
+        yield f"{year:04d}-{month:02d}" # E.g. "2026-04"
 
         month -= 1
         if month == 0:
             month = 12
             year -= 1
+        
             
 
 #############################
@@ -96,10 +96,8 @@ def generate_past_months(n: int = 12) -> Iterator[str]:
 
 def reservoir_sample_from_stream(stream, k: int) -> list:
     """
-    Reservoir sampling over a stream of items.
-
-    Picks k uniformly random items from a stream of unknown size
-    in a single pass using O(k) memory.
+    Reservoir sampling over a stream of items. Works for any stream item type.
+    Picks k uniformly random items from a stream of unknown size in a single pass using O(k) memory.
     """
 
     sample = []
@@ -108,7 +106,6 @@ def reservoir_sample_from_stream(stream, k: int) -> list:
             # Phase 1: fill the reservoir with first k items
             sample.append(item)
         else:
-            break # TODO remove, just for testing
             # Phase 2: replace elements with decreasing probability
             # i is current index (0-based)
             # j is random position in [0, i]

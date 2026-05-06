@@ -6,6 +6,7 @@ INPUT_FILE_EXTENSION = ".pgn.zst"
 LICHESS_DUMP_URL = "https://database.lichess.org/standard"
 PATH_QUERY_FOLDER = "src/chessforge/queries"
 
+
 # This is used for parsing the PGN files.
 # Keys need to match the PGN headers
 # INT columns will be parsed as integers

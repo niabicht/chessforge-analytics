@@ -1,14 +1,22 @@
-from chessforge.utils.utils import camel_to_snake
+import psycopg2
+
 from chessforge.utils.global_constants import GAME_COLUMNS
+from chessforge.utils.utils import mixed_to_snake
 
 
-def initialize_database(connection):
-    columns_sql = ",\n".join(
-        f"{camel_to_snake(column)} {column_type}"
+def initialize_database(connection: psycopg2.extensions.connection) -> None:
+    """
+    TODO
+    """
+
+    # Determine the game table columns from single source of truth
+    game_table_columns = ",\n".join(
+        f"{mixed_to_snake(column)} {column_type}" # Stick to sql snake case convention
         for column, column_type in GAME_COLUMNS.items()
     )
 
     with connection.cursor() as cursor:
+        # Initialize the table that keeps track of datasets from different files
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS datasets (
                 id SERIAL PRIMARY KEY,
@@ -18,11 +26,12 @@ def initialize_database(connection):
             );
         """)
 
+        # Initialize the table with the actual games
         cursor.execute(f"""
             CREATE TABLE IF NOT EXISTS games (
                 id SERIAL PRIMARY KEY,
                 dataset_id INT REFERENCES datasets(id),
-                {columns_sql}
+                {game_table_columns}
             );
         """)
 

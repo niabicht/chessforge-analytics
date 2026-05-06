@@ -1,7 +1,14 @@
 import subprocess
 import sys
 
-# Shorthand for lengthly docker commands that run the CLI inside the container.
+# Convenience wrapper around Docker CLI execution.
+# Runs the Chessforge CLI inside the Docker container.
+#
+# Usage:
+#   python chessforge.py <command>
+#
+# Equivalent to:
+#   docker compose run --rm app python -m chessforge.cli <command>
 
 cmd = [
     "docker", "compose", "run", "--rm",
