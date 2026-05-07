@@ -35,10 +35,7 @@ jobs:
       # Spin up a real PostgreSQL container for the duration of this job
       postgres:
         image: postgres:18
-        env: # TODO do I even need this block?
-          POSTGRES_USER: app_user
-          POSTGRES_PASSWORD: 123456
-          POSTGRES_DB: chessforge_database
+
         # Wait until PostgreSQL is actually ready before running tests
         options: >-
           --health-cmd pg_isready
