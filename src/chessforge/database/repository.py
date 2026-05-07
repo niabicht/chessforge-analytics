@@ -3,7 +3,7 @@ from typing import Any
 import psycopg2
 import psycopg2.extras
 
-from chessforge.utils.global_constants import GAME_COLUMNS
+from chessforge.ingestion.feature_registry import GAME_COLUMNS
 from chessforge.utils.utils import mixed_to_snake
 
 

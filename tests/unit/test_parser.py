@@ -1,7 +1,7 @@
 import pytest
 
 from chessforge.ingestion.parser import parse_game_string_into_dict
-from chessforge.utils.global_constants import GAME_COLUMNS
+from chessforge.ingestion.feature_registry import GAME_COLUMNS
 
 
 # ---------------------------------------------------------------------------
@@ -99,21 +99,20 @@ class TestParseGameStringIntoDict:
 
     def test_correct_values_with_eval(self):
         result = parse_game_string_into_dict(PGN_WITH_EVAL)
-        assert result["Event"] == "Rated Rapid game"
-        assert result["Result"] == "1-0"
+        assert result["Result"] == 2
         assert result["WhiteElo"] == 960
         assert result["BlackElo"] == 937
-        assert result["ECO"] == "C60"
-        assert result["TimeControl"] == "600+0"
-        assert result["Termination"] == "Normal"
+        assert result["ECO"] == 260
+        assert result["TimeControl"] == 600
 
     def test_correct_values_without_eval(self):
         result = parse_game_string_into_dict(PGN_WITHOUT_EVAL)
-        assert result["Result"] == "0-1"
+        assert result["Result"] == 0
         assert result["WhiteElo"] == 2087
         assert result["BlackElo"] == 1969
-        assert result["ECO"] == "B40"
-        assert result["Termination"] == "Time forfeit"
+        assert result["ECO"] == 140
+        assert result["TimeControl"] == 60
+
 
     def test_elo_fields_are_integers(self):
         """INT-typed columns in GAME_COLUMNS must be parsed as int, not string."""
