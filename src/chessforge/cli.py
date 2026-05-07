@@ -4,6 +4,7 @@ from tqdm import tqdm
 import chessforge.services.dataset_service as dataset_service
 import chessforge.services.ingestion_service as ingestion_service
 import chessforge.services.input_file_service as input_file_service
+import chessforge.services.ml_service as ml_service
 import chessforge.services.query_service as query_service
 
 
@@ -158,6 +159,16 @@ def query(name: str = typer.Option(..., help=f"Name of predefined query. Availab
 
     is_success = query_service.run_query(name, on_result=typer.echo)
     handle_service_result(is_success)
+
+
+
+############
+### Datasets
+############
+
+@app.command()
+def debug():
+    ml_service.debug()
 
 
 

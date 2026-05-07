@@ -1,7 +1,12 @@
+numpy
+onnx
+onnxruntime
+pandas
 psycopg2-binary
 pytest
 python-chess
 requests
+torch
 tqdm
 typer[all]
 zstandard
