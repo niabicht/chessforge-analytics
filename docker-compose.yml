@@ -6,10 +6,11 @@ services:
     container_name: chessforge_database_container
 
     # Database configuration
-    # Credentials are used by psycopg2 to connect to database
+    # Credentials are used to initialize to database
+    # Same credentials are hardcoded in connections.py so that app service can connect
     environment:
       POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: 123456  # dev-only password, not for production use
+      POSTGRES_PASSWORD: 123456 # Does not matter for local-only dev tool
       POSTGRES_DB: chessforge_database
 
     # Exposes DB to host machine (useful for tools like DBeaver)
@@ -31,6 +32,7 @@ services:
     # Ensure database starts before app container
     depends_on:
       - database_service
+
 
 # Named Docker volume used to persist PostgreSQL data
 volumes:

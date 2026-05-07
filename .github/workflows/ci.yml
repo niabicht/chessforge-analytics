@@ -7,7 +7,7 @@ on:
     branches: [main] # Always run on PRs targeting main
 
 jobs:
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,3 +26,42 @@ jobs:
         env:
           PYTHONPATH: src # Mirrors ENV PYTHONPATH=/app/src in the Dockerfile
         run: pytest tests/unit
+
+
+  integration-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      # Spin up a real PostgreSQL container for the duration of this job
+      postgres:
+        image: postgres:18
+        env: # TODO do I even need this block?
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: 123456
+          POSTGRES_DB: chessforge_database
+        # Wait until PostgreSQL is actually ready before running tests
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run integration tests
+        env:
+          PYTHONPATH: src
+          DB_HOST: localhost # In CI the PostgreSQL service is reachable on localhost
+        run: pytest tests/integration
