@@ -36,6 +36,14 @@ jobs:
       postgres:
         image: postgres:18
 
+        # Database configuration
+        # Credentials are used to initialize to database
+        # Same credentials are hardcoded in connections.py so that app service can connect
+        env:
+          POSTGRES_USER: app_user
+          POSTGRES_PASSWORD: 123456
+          POSTGRES_DB: chessforge_database
+
         # Wait until PostgreSQL is actually ready before running tests
         options: >-
           --health-cmd pg_isready
