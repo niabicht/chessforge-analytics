@@ -30,7 +30,7 @@ Clone the repository:
 
 ```bash
 git clone https://github.com/niabicht/chessforge-analytics.git
-cd chessforge-analytics
+cd chessforge-analytics/bin
 ```
 
 Docker images are built automatically on first use. To build manually:
@@ -50,7 +50,7 @@ If you want real but manageable data, older Lichess dumps are much smaller (star
 The app is available via two equivalent interfaces. Choose whichever fits your setup.
 
 > [!NOTE]
-> These examples show the most common commands. Every command supports `--help` for full flag documentation — e.g. `python chessforge.py ingest --help`. The `--help` output is always the authoritative reference, this README may lag behind.
+> These examples show the most common commands. Every command supports `--help` for full flag documentation — e.g. `python run.py ingest --help`. The `--help` output is always the authoritative reference, this README may lag behind.
 
 <details>
 <summary><strong>Docker commands</strong> (no Python required)</summary>
@@ -91,29 +91,29 @@ Requires Python installed locally. The wrapper shortens the lengthy Docker comma
 
 ```bash
 # Download a specific month or the latest available Lichess dataset
-python chessforge.py download --month 2026-04
-python chessforge.py download --latest
+python run.py download --month 2026-04
+python run.py download --latest
 
 # List downloaded input files
-python chessforge.py list-files
+python run.py list-files
 
 # Ingest the example dataset or a specific month into the database
-python chessforge.py ingest --example
-python chessforge.py ingest --month 2026-04
+python run.py ingest --example
+python run.py ingest --month 2026-04
 
 # List all ingested datasets
-python chessforge.py list-datasets
+python run.py list-datasets
 
 # Run a predefined SQL query
-python chessforge.py query --name opening-winrates
+python run.py query --name opening-winrates
 
 # Delete one or all datasets
-python chessforge.py delete-dataset --month 2026-04
-python chessforge.py delete-dataset --all
+python run.py delete-dataset --month 2026-04
+python run.py delete-dataset --all
 
 # Delete one or all downloaded input files
-python chessforge.py delete-file --month 2026-04
-python chessforge.py delete-file --all
+python run.py delete-file --month 2026-04
+python run.py delete-file --all
 ```
 
 </details>

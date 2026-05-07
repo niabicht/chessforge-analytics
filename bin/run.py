@@ -5,7 +5,7 @@ import sys
 # Runs the Chessforge CLI inside the Docker container.
 #
 # Usage:
-#   python chessforge.py <command>
+#   python run.py <command>
 #
 # Equivalent to:
 #   docker compose run --rm app python -m chessforge.cli <command>
