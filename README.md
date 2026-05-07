@@ -206,7 +206,9 @@ Add a `.sql` file to `src/chessforge/queries/`. The `query_service.py` discovers
     - custom parser, preferably in C or Rust
     - header-only parsing if moves are unused (but will probably use moves in future)
 - ~6% of games include Stockfish evaluations (`[%eval 2.35]`, `[%eval #-4]`)... consider parsing these as an additional feature for the ML pipeline
+- make the presentation of queries nicer, parse the output dict, pare the encoding of e.g. openings to human readable format
 
+## Next commit
 </details>
 
 

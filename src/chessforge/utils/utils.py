@@ -2,7 +2,7 @@ import os
 import random
 import re
 from datetime import datetime
-from typing import Iterator
+from typing import Any, Iterator
 
 from chessforge.utils.global_constants import (
     PATH_EXAMPLE_FOLDER, 
@@ -57,9 +57,15 @@ def ensure_data_dir_exists(path) -> None:
 ### Type and String Utils
 #########################
 
+def identity(value: Any) -> Any:
+    return value
+
 def int_or_none(value) -> int | None:
     try: return int(value)
     except: return None
+
+def str_or_none(value: Any) -> str | None:
+    return value if isinstance(value, str) else None
 
 def mixed_to_snake(string: str) -> str:
     # Insert underscore before capitalized words. E.g. "<anything>Xy" -> "<anything>_Xy" or "WhiteElo" -> "White_Elo"

@@ -1,6 +1,6 @@
 import psycopg2
 
-from chessforge.utils.global_constants import GAME_COLUMNS
+from chessforge.ingestion.feature_registry import GAME_COLUMNS
 from chessforge.utils.utils import mixed_to_snake
 
 
