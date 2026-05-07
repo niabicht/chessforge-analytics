@@ -199,7 +199,6 @@ Add a `.sql` file to `src/chessforge/queries/`. The `query_service.py` discovers
 
 ## TODOs
 
-- Move database password to environment variable
 - Add screenshots / GIFs to README
 - Performance improvements: 
     - PostgreSQL `COPY` instead of `executemany` for bulk inserts

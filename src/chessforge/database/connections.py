@@ -1,3 +1,4 @@
+import os
 import time
 
 import psycopg2
@@ -8,7 +9,7 @@ import chessforge.database.schema as schema
 def connect_to_database() -> psycopg2.extensions.connection:
     # Connect to the PostgreSQL database using credentials corresponding to the docker-compose.yml file.
     return psycopg2.connect(
-        host="database_service",
+        host=os.environ.get("DB_HOST", "database_service"), # CI can define a different host
         database="chessforge_database",
         user="app_user",
         password="123456"
