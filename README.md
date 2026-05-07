@@ -189,7 +189,8 @@ This project prioritises end-to-end functionality over production-grade robustne
 ### Running tests
 
 ```bash
-docker compose run --rm app pytest
+docker compose build
+docker compose run --rm app pytest tests/unit 
 ```
 
 ### Adding a predefined query

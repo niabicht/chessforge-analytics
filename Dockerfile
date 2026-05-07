@@ -11,4 +11,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY src/ ./src/
 ENV PYTHONPATH=/app/src
 
+# Copy tests folder and files
+COPY tests/ ./tests/
+COPY conftest.py .
+COPY pytest.ini .
+
 # Default runtime is handled via docker-compose or python wrapper
