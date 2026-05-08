@@ -31,7 +31,7 @@ def _create_map_handlers(mapping: dict):
 
 
 ### Feature: Result
-_encode_result, _decode_result = _create_map_handlers({
+encode_result, decode_result = _create_map_handlers({
     "0-1":     0, # Black wins
     "1/2-1/2": 1, # Draw
     "1-0":     2, # White wins
@@ -39,7 +39,7 @@ _encode_result, _decode_result = _create_map_handlers({
 
 
 ### Feature: ECO
-def _encode_eco(eco_str: str | None) -> int | None:
+def encode_eco(eco_str: str | None) -> int | None:
     if not eco_str or len(eco_str) != 3: return None
     try:
         letter_map = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4}
@@ -50,7 +50,7 @@ def _encode_eco(eco_str: str | None) -> int | None:
     except (ValueError, IndexError):
         return None
 
-def _decode_eco(eco_int: int | None) -> str | None:
+def decode_eco(eco_int: int | None) -> str | None:
     if eco_int is None or not (0 <= eco_int <= 499): return None
     letters = "ABCDE"
     letter = letters[eco_int // 100]
@@ -59,7 +59,7 @@ def _decode_eco(eco_int: int | None) -> str | None:
 
 
 ### Feature: TimeControl
-def _encode_time_control(pgn_str: str) -> int | None:
+def encode_time_control(pgn_str: str) -> int | None:
     if not pgn_str or pgn_str == "-":
         return None
     try:
@@ -71,7 +71,7 @@ def _encode_time_control(pgn_str: str) -> int | None:
     except (ValueError, IndexError):
         return None
 
-def _decode_time_control(total_seconds: int | None) -> str:
+def decode_time_control(total_seconds: int | None) -> str:
     if total_seconds is None:
         return "Unknown"
     
@@ -104,8 +104,8 @@ FEATURES: list[FeatureSpec] = [
         pgn_key="Result",
         db_column="result",
         db_type="SMALLINT",
-        encode=_encode_result,
-        decode=_decode_result,
+        encode=encode_result,
+        decode=decode_result,
     ),
     FeatureSpec(
         pgn_key="WhiteElo",
@@ -117,7 +117,7 @@ FEATURES: list[FeatureSpec] = [
     FeatureSpec(
         pgn_key="BlackElo",
         db_column="black_elo",
-        db_type="INT",
+        db_type="SMALLINT",
         encode=int_or_none,
         decode=str,
     ),
@@ -125,8 +125,8 @@ FEATURES: list[FeatureSpec] = [
         pgn_key="ECO",
         db_column="eco",
         db_type="SMALLINT",
-        encode=_encode_eco,
-        decode=_decode_eco,
+        encode=encode_eco,
+        decode=decode_eco,
     ),
     FeatureSpec(
         pgn_key="Opening",
@@ -138,9 +138,9 @@ FEATURES: list[FeatureSpec] = [
     FeatureSpec(
         pgn_key="TimeControl",
         db_column="time_control",
-        db_type="TEXT",
-        encode=_encode_time_control,
-        decode=_decode_time_control,
+        db_type="SMALLINT",
+        encode=encode_time_control,
+        decode=decode_time_control,
     ),
 ]
 

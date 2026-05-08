@@ -1,11 +1,14 @@
+joblib
 numpy
 onnx
 onnxruntime
+onnxscript
 pandas
 psycopg2-binary
 pytest
 python-chess
 requests
+scikit-learn
 torch
 tqdm
 typer[all]

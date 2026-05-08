@@ -134,11 +134,11 @@ python run.py delete-file --all
 | Area | Tools |
 |---|---|
 | Infrastructure | Docker, Docker Compose |
-| Data ingestion | Python, `python-chess`, `zstandard` |
-| Database | PostgreSQL, `psycopg2` |
+| Data ingestion | Python, python-chess, zstandard |
+| Database | PostgreSQL, psycopg2 |
 | CLI | Typer, tqdm |
-| Testing & CI | `pytest`, GitHub Actions |
-| Planned: ML | `pandas`, PyTorch, MLflow |
+| Testing & CI | pytest, GitHub Actions |
+| Planned: ML | pandas, PyTorch, MLflow |
 | Planned: LLM/RAG | LLaMA 3 (Ollama), LangChain |
 | Planned: UI | Streamlit |
 
@@ -207,8 +207,8 @@ Add a `.sql` file to `src/chessforge/queries/`. The `query_service.py` discovers
     - header-only parsing if moves are unused (but will probably use moves in future)
 - ~6% of games include Stockfish evaluations (`[%eval 2.35]`, `[%eval #-4]`)... consider parsing these as an additional feature for the ML pipeline
 - make the presentation of queries nicer, parse the output dict, pare the encoding of e.g. openings to human readable format
+- add minimal validation, e.g. checking all dataset lines and drop any with None entries
 
-## Next commit
 </details>
 
 
