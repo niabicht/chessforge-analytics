@@ -4,7 +4,7 @@ import zstandard as zstd
 
 import chessforge.ingestion.streamer as streamer
 import chessforge.ingestion.downloader as downloader 
-from chessforge.utils.global_constants import PATH_DATA_RAW
+from chessforge.utils.global_constants import PATH_DATA_RAW_DIR
 from chessforge.utils.utils import (
     get_recent_months_string_generator, 
     reservoir_sample_from_stream, 
@@ -49,9 +49,9 @@ def create_example_file(n_games: int, log=lambda message: None, on_progress=lamb
 
 
 def list_files(log=lambda message: None, on_all_files=lambda has_incomplete_download: None) -> bool:
-    ensure_data_dir_exists(PATH_DATA_RAW)
+    ensure_data_dir_exists(PATH_DATA_RAW_DIR)
 
-    files = os.listdir(PATH_DATA_RAW)
+    files = os.listdir(PATH_DATA_RAW_DIR)
     pgn_files = [f for f in files if is_input_lichess_file(f)]
     tmp_files = [f for f in files if contains_incomplete_download(f)]
 
@@ -59,13 +59,13 @@ def list_files(log=lambda message: None, on_all_files=lambda has_incomplete_down
     if not pgn_files: output += "\nNone"
     else:
         for file_name in pgn_files:
-            size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
+            size = get_file_size_string(os.path.join(PATH_DATA_RAW_DIR, file_name))
             output += f"\n{file_name} ({size})"
 
     if tmp_files:
         output += "\n\nIncomplete downloads:"
         for file_name in tmp_files:
-            size = get_file_size_string(os.path.join(PATH_DATA_RAW, file_name))
+            size = get_file_size_string(os.path.join(PATH_DATA_RAW_DIR, file_name))
             output += f"\n{file_name} ({size})"
 
     log(output)
@@ -85,7 +85,7 @@ def download(month: str = None, download_latest: bool = False, log=lambda messag
         log(f"Latest dataset found: {month}")
 
     # Handle local path and download
-    ensure_data_dir_exists(PATH_DATA_RAW)
+    ensure_data_dir_exists(PATH_DATA_RAW_DIR)
     file_name = build_lichess_name(month, add_file_extension=True)
     is_success = downloader.download_lichess_dump_file(file_name, log=log, on_progress=on_progress, on_done=on_done)
 
@@ -95,9 +95,9 @@ def download(month: str = None, download_latest: bool = False, log=lambda messag
 def delete_files(all: bool = False, month: str = None, log=lambda message: None) -> bool:
     if all:
         deleted = 0
-        for file in os.listdir(PATH_DATA_RAW):
+        for file in os.listdir(PATH_DATA_RAW_DIR):
             if is_input_lichess_file(file):
-                os.remove(os.path.join(PATH_DATA_RAW, file))
+                os.remove(os.path.join(PATH_DATA_RAW_DIR, file))
                 deleted += 1
 
         log(f"Deleted {deleted} files.")
@@ -105,7 +105,7 @@ def delete_files(all: bool = False, month: str = None, log=lambda message: None)
 
     # Find and delete specific file
     file_name = build_lichess_name(month, add_file_extension=True)
-    file_path = os.path.join(PATH_DATA_RAW, file_name)
+    file_path = os.path.join(PATH_DATA_RAW_DIR, file_name)
 
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -118,9 +118,9 @@ def delete_files(all: bool = False, month: str = None, log=lambda message: None)
 
 def delete_incomplete_downloads(log=lambda message: None) -> bool:
     deleted = 0
-    for file in os.listdir(PATH_DATA_RAW):
+    for file in os.listdir(PATH_DATA_RAW_DIR):
         if contains_incomplete_download(file):
-            os.remove(os.path.join(PATH_DATA_RAW, file))
+            os.remove(os.path.join(PATH_DATA_RAW_DIR, file))
             deleted += 1
 
     log(f"Deleted {deleted} incomplete-download files.")

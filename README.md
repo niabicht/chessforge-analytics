@@ -1,6 +1,6 @@
 # ChessForge Analytics
 
-An end-to-end data engineering and ML portfolio project built on real-world [Lichess](https://lichess.org/) game data.
+An end-to-end data engineering and ML project built on real-world [Lichess](https://lichess.org/) game data.
 
 The project demonstrates a full stack from raw data ingestion to structured querying, with a natural language LLM interface and ML pipeline planned as next phases.
 
@@ -138,7 +138,7 @@ python run.py delete-file --all
 | Database | PostgreSQL, psycopg2 |
 | CLI | Typer, tqdm |
 | Testing & CI | pytest, GitHub Actions |
-| Planned: ML | pandas, PyTorch, MLflow |
+| Planned: ML | PyTorch, onnx, MLflow |
 | Planned: LLM/RAG | LLaMA 3 (Ollama), LangChain |
 | Planned: UI | Streamlit |
 
@@ -208,6 +208,10 @@ Add a `.sql` file to `src/chessforge/queries/`. The `query_service.py` discovers
 - ~6% of games include Stockfish evaluations (`[%eval 2.35]`, `[%eval #-4]`)... consider parsing these as an additional feature for the ML pipeline
 - make the presentation of queries nicer, parse the output dict, pare the encoding of e.g. openings to human readable format
 - add minimal validation, e.g. checking all dataset lines and drop any with None entries
+- bug: sql queries still use results like "1-0"
+- need to define seed for reproducebility
+- streaming for ML pipeline
+- is draw underrepresented in predictions?
 
 </details>
 

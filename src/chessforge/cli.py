@@ -6,12 +6,10 @@ import chessforge.services.ingestion_service as ingestion_service
 import chessforge.services.input_file_service as input_file_service
 import chessforge.services.ml_service as ml_service
 import chessforge.services.query_service as query_service
-from chessforge.services.ml_service import MLService
+import chessforge.services.ml_service as ml_service
 
 
 app = typer.Typer(help="Chessforge Analytics CLI")
-ml_service = MLService() # TODO do I really need state for the service?
-
 
 
 ###########
@@ -164,21 +162,15 @@ def query(name: str = typer.Option(..., help=f"Name of predefined query. Availab
 
 
 
-###############
-### ML Commands
-###############
+######
+### ML
+######
 
 @app.command()
-def prepare_nn():
-    """Analyze database to prepare feature scalers."""
-    success = ml_service.prepare_nn(log=typer.echo)
-    handle_service_result(success, "Preprocessing artifacts created.")
-
-@app.command()
-def train_nn(epochs: int = 10):
+def train_nn():
     """Train the neural network on ingested data."""
-    success = ml_service.train_nn(epochs=epochs, log=typer.echo)
-    handle_service_result(success, "Model training and ONNX export complete.")
+    is_success = ml_service.train_nn(log=typer.echo)
+    handle_service_result(is_success)
 
 @app.command()
 def predict_outcome(
@@ -187,9 +179,9 @@ def predict_outcome(
     eco: str = typer.Option(..., help="ECO code, e.g., B05"), 
     time_control: str = typer.Option(..., help="Time control string, e.g., 180+2")
 ):
-    """Predict game result (Win/Draw/Loss) based on game parameters."""
-    result = ml_service.predict(white_elo, black_elo, eco, time_control)
-    typer.secho(f"Predicted Result: {result}", fg=typer.colors.GREEN, bold=True)
+    """Predict probabilities for game result (Win/Draw/Loss) based on game parameters."""
+    is_success = ml_service.predict(white_elo, black_elo, eco, time_control, log=typer.echo)
+    handle_service_result(is_success)
 
 
 

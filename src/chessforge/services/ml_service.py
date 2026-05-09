@@ -1,160 +1,111 @@
-import os
+"""
+ml_service.py
+Responsible for:
+  - Fetching raw data from the database
+  - Delegating preprocessing to preprocessor.py
+  - Delegating training / inference to model.py
+  - Translating CLI inputs (e.g. "B14", "180+2") into DB-encoded values via feature_registry
+  - Logging results back to the CLI
+"""
 
-import torch # TODO can I maybe use a cpu-only package to avoid all of that cuda stuff I may not need
-import torch.nn as nn
-import torch.optim as optim
-from torch.utils.data import DataLoader, random_split
-
-from chessforge.database.connections import InitializedConnection
-from chessforge.database.repository import execute_query_return_result
-from chessforge.ingestion.feature_registry import encode_eco, encode_time_control, FEATURES_BY_PGN_KEY
-from chessforge.ml.preprocessing import ChessPreprocessor
-from chessforge.ml.model import NNPredictOutcome
-from chessforge.ml.dataset import ChessDataset
-
-
-# Paths for artifacts
-MODEL_DIR = "data/models"
-SCALER_PATH = os.path.join(MODEL_DIR, "scaler.joblib")
-MODEL_PATH = os.path.join(MODEL_DIR, "model.pth")
-ONNX_PATH = os.path.join(MODEL_DIR, "model.onnx")
+import chessforge.database.connections as connections
+import chessforge.database.repository as repository
+from chessforge.ingestion.feature_registry import FEATURES_BY_PGN_KEY, NUMERIC_FEATURES, EMBEDDING_FEATURES, TARGET_FEATURE
+from chessforge.ml import model as nn_model
+from chessforge.ml import preprocessor
 
 
-class MLService:
-    def __init__(self):
-        self.preprocessor = ChessPreprocessor()
-        self.model = None
-        os.makedirs(MODEL_DIR, exist_ok=True)
 
-    def prepare_nn(self, log=print):
-        """Fetches all data to fit the scalers."""
-        log("Fetching games for preprocessing...")
-        with InitializedConnection() as connection:
-            # We fetch everything just to get the distribution of Elos and Time
-            games = execute_query_return_result(connection, "SELECT white_elo, black_elo, time_control FROM games")
-        
-        if not games:
-            log("No data found in DB. Ingest some games first.")
-            return False
-
-        self.preprocessor.fit(games)
-        self.preprocessor.save(SCALER_PATH)
-        log(f"Scalers fitted and saved to {SCALER_PATH}")
-        return True
+def _load_rows(log=lambda message: None) -> list[dict] | None:
+    """Fetch all ML-relevant columns from the database."""
+    needed_cols = (
+        [TARGET_FEATURE.db_column]
+        + [s.db_column for s in NUMERIC_FEATURES]
+        + [s.db_column for s in EMBEDDING_FEATURES]
+    )
+    col_list = ", ".join(needed_cols)
+    sql = f"SELECT {col_list} FROM games;"
+    with connections.InitializedConnection() as connection:
+        rows = repository.execute_query_return_result(connection, sql)
+    rows = [dict(r) for r in rows]
+    log(f"Loaded {len(rows):,} rows from database.")
+    return rows
 
 
-    def train_nn(self, epochs=10, batch_size=64, log=print):
-        """Orchestrates the training loop and validation."""
-        # 1. Load Preprocessor
-        if os.path.exists(SCALER_PATH):
-            self.preprocessor.load(SCALER_PATH)
-        else:
-            log("Scaler not found. Run prepare-nn first.")
-            return False
-
-        # 2. Prepare Data
-        log("Loading datasets from DB...")
-        with InitializedConnection() as connection:
-            raw_rows = execute_query_return_result(connection, 
-                "SELECT white_elo, black_elo, time_control, eco, result FROM games")
-
-        dataset = ChessDataset(raw_rows, self.preprocessor)
-        train_size = int(0.8 * len(dataset))
-        val_size = len(dataset) - train_size
-        train_set, val_set = random_split(dataset, [train_size, val_size])
-
-        train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
-        val_loader = DataLoader(val_set, batch_size=batch_size)
-
-        # 3. Initialize Model
-        self.model = NNPredictOutcome()
-        criterion = nn.CrossEntropyLoss()
-        optimizer = optim.Adam(self.model.parameters(), lr=0.001)
-
-        # 4. Training Loop
-        log(f"Starting training on {train_size} games...")
-        for epoch in range(epochs):
-            self.model.train()
-            total_loss = 0
-            for batch in train_loader:
-                optimizer.zero_grad()
-                outputs = self.model(batch["features"], batch["eco"])
-                loss = criterion(outputs, batch["label"])
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-            
-            # Validation
-            val_acc = self._evaluate(val_loader)
-            log(f"Epoch {epoch+1}/{epochs} - Loss: {total_loss/len(train_loader):.4f} - Val Acc: {val_acc:.2f}%")
-
-        # 5. Save Artifacts
-        torch.save(self.model.state_dict(), MODEL_PATH)
-        self._export_onnx(log)
-        return True
-
-
-    def _evaluate(self, loader):
-        self.model.eval()
-        correct = 0
-        total = 0
-        with torch.no_grad():
-            for batch in loader:
-                outputs = self.model(batch["features"], batch["eco"])
-                _, predicted = torch.max(outputs.data, 1)
-                total += batch["label"].size(0)
-                correct += (predicted == batch["label"]).sum().item()
-        return 100 * correct / total
+def train_nn(log=lambda message: None) -> bool:
+    rows = _load_rows(log)
+    if not rows:
+        log("No data found. Ingest some games first.")
+        return False
     
+    rows = preprocessor.drop_incomplete_rows(rows)
+    log(f"{len(rows):,} rows remaining after dropping incomplete entries.")
+    if len(rows) < 100:
+        log("Not enough clean rows to train. Aborting.")
+        return False
+    
+    (
+        X_num_train, X_emb_train, y_train,
+        X_num_val,   X_emb_val,   y_val,
+    ) = preprocessor.prepare_training_data(rows)
 
-    def predict(self, white_elo: int, black_elo: int, eco_str: str, time_control_str: str) -> str:
-        # 1. Load artifacts if not in memory
-        if not self.model:
-            if not os.path.exists(MODEL_PATH) or not os.path.exists(SCALER_PATH):
-                return "Error: Model or Scaler not found. Train the model first."
+    nn_model.train_and_save_model(
+        X_num_train, X_emb_train, y_train,
+        X_num_val,   X_emb_val,   y_val,
+        log=log,
+    )
 
-            self.preprocessor.load(SCALER_PATH)
-            self.model = NNPredictOutcome()
-            self.model.load_state_dict(torch.load(MODEL_PATH))
-            self.model.eval()
-
-        # 2. Transform raw inputs using our registry logic
-        eco_int = encode_eco(eco_str) or 0
-        time_seconds = encode_time_control(time_control_str) or 0
-
-        # Create a dummy dict to reuse the preprocessor logic
-        game_dict = {
-            "white_elo": white_elo,
-            "black_elo": black_elo,
-            "time_control": time_seconds,
-            "eco": eco_int,
-            "result": None # Result does not matter for prediction
-        }
-
-        processed = self.preprocessor.transform(game_dict)
-
-        # 3. Inference
-        with torch.no_grad():
-            features_tensor = torch.tensor(processed["features"]).unsqueeze(0) # Add batch dimension
-            eco_tensor = torch.tensor([processed["eco"]]).long()
-
-            outputs = self.model(features_tensor, eco_tensor)
-            _, predicted = torch.max(outputs, 1)
-            prediction_idx = predicted.item()
-
-        # 4. Map back to human readable result via the registry
-        # 0: Black wins, 1: Draw, 2: White wins
-        result_map = FEATURES_BY_PGN_KEY["Result"].decode
-        return result_map(prediction_idx)
+    return True
 
 
-    def _export_onnx(self, log):
-        """Exports the model to ONNX format for later use."""
-        self.model.eval()
-        dummy_features = torch.randn(1, 3)
-        dummy_eco = torch.randint(0, 500, (1,))
-        torch.onnx.export(self.model, (dummy_features, dummy_eco), ONNX_PATH,
-                          input_names=['features', 'eco'],
-                          output_names=['outcome'],
-                          dynamic_axes={'features': {0: 'batch_size'}, 'eco': {0: 'batch_size'}})
-        log(f"Model exported to {ONNX_PATH}")
+def predict(
+    white_elo: int,
+    black_elo: int,
+    eco_str: str,
+    time_control_str: str,
+    log=lambda message: None,
+) -> bool:
+    # Encode CLI strings to DB-stored values using feature_registry encode functions
+    eco_val = FEATURES_BY_PGN_KEY["ECO"].encode(eco_str)
+    time_control_val  = FEATURES_BY_PGN_KEY["TimeControl"].encode(time_control_str)
+
+    if eco_val is None:
+        log(f"Could not parse ECO code '{eco_str}'. Expected format: A00 to E99.")
+        return False
+    
+    if time_control_val is None:
+        log(f"Could not parse time control '{time_control_str}'. Expected format: 180+2 or 300.")
+        return False
+    
+    feature_values = {
+        "white_elo":    white_elo,
+        "black_elo":    black_elo,
+        "eco":          eco_val,
+        "time_control": time_control_val,
+    }
+
+    try:
+        scaler = preprocessor.load_scalers()
+    except FileNotFoundError as e:
+        log(str(e))
+        return False
+    
+    numeric, embeddings = preprocessor.transform_single_input(feature_values, scaler)
+    try:
+        probabilities = nn_model.predict_probabilities(numeric, embeddings)
+    except FileNotFoundError as e:
+        log(str(e))
+        return False
+        
+    black_win, draw, white_win = probabilities
+    log(
+        f"\nPredicted outcome probabilities:\n"
+        f"  White win : {white_win * 100:5.1f}%\n"
+        f"  Draw      : {draw      * 100:5.1f}%\n"
+        f"  Black win : {black_win * 100:5.1f}%"
+    )
+    return True
+
+
+def _decode_feature(pgn_key: str, value) -> str:
+    return FEATURES_BY_PGN_KEY[pgn_key].decode(value)
