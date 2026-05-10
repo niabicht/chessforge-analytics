@@ -88,7 +88,7 @@ docker compose run --rm app python -m chessforge.cli delete-file --all
 docker compose run --rm app python -m chessforge.cli train-nn
 docker compose run --rm app python -m chessforge.cli predict-outcome --white-elo 1800 --black-elo 1600 --eco B14 --time-control 180+2
 
-# Open the MLflow UI to browse training runs (available at http://localhost:5000 after running the command)
+# Host the MLflow UI on a local web server to browse training runs (available at http://localhost:5000 after running the command)
 docker compose run --rm --service-ports app mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns
 ```
 
@@ -129,8 +129,8 @@ python run.py delete-file --all
 python run.py train-nn
 python run.py predict-outcome --white-elo 1800 --black-elo 1600 --eco B14 --time-control 180+2
 
-# Open the MLflow UI to browse training runs (available at http://localhost:5000 after running the command)
-docker compose run --rm --service-ports app mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns
+# Host the MLflow UI on a local web server to browse training runs (available at http://localhost:5000 after running the command)
+python run.py mlflow-ui
 ```
 
 </details>
