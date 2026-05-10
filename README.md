@@ -13,6 +13,9 @@ The project demonstrates a full stack from raw data ingestion to structured quer
 - Store structured game data (Elo, opening ECO, time control, result, …) in PostgreSQL
 - Manage datasets: ingest, list, and delete monthly snapshots independently
 - Query the database via predefined SQL queries through the CLI
+- Train a neural network to predict game outcome probabilities (white win / draw / black win) from Elo ratings, opening ECO, and time control
+- Run outcome predictions for arbitrary game parameters via the CLI
+- Track all training runs (hyperparameters, per-epoch metrics, model artifacts) with MLflow
 - Platform-independent thanks to Docker containerization
 
 
@@ -80,6 +83,13 @@ docker compose run --rm app python -m chessforge.cli delete-dataset --all
 # Delete one or all downloaded input files
 docker compose run --rm app python -m chessforge.cli delete-file --month 2026-04
 docker compose run --rm app python -m chessforge.cli delete-file --all
+
+# Train the neural network on all ingested data, and use it to predict outcomes
+docker compose run --rm app python -m chessforge.cli train-nn
+docker compose run --rm app python -m chessforge.cli predict-outcome --white-elo 1800 --black-elo 1600 --eco B14 --time-control 180+2
+
+# Open the MLflow UI to browse training runs (available at http://localhost:5000 after running the command)
+docker compose run --rm --service-ports app mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns
 ```
 
 </details>
@@ -114,6 +124,13 @@ python run.py delete-dataset --all
 # Delete one or all downloaded input files
 python run.py delete-file --month 2026-04
 python run.py delete-file --all
+
+# Train the neural network on all ingested data, and use it to predict outcomes
+python run.py train-nn
+python run.py predict-outcome --white-elo 1800 --black-elo 1600 --eco B14 --time-control 180+2
+
+# Open the MLflow UI to browse training runs (available at http://localhost:5000 after running the command)
+docker compose run --rm --service-ports app mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri /app/mlruns
 ```
 
 </details>
@@ -138,7 +155,7 @@ python run.py delete-file --all
 | Database | PostgreSQL, psycopg2 |
 | CLI | Typer, tqdm |
 | Testing & CI | pytest, GitHub Actions |
-| Planned: ML | PyTorch, onnx, MLflow |
+| ML | PyTorch, scikit-learn onnx, MLflow |
 | Planned: LLM/RAG | LLaMA 3 (Ollama), LangChain |
 | Planned: UI | Streamlit |
 
@@ -146,9 +163,8 @@ python run.py delete-file --all
 
 ## Planned Features
 
-### Phase 2: ML pipeline
-A PyTorch neural network predicting game outcome (win/draw/loss) from structured features: Elo difference, opening ECO, and time control. Full experiment tracking via MLflow.
-Optional extension: a CNN predicting outcome from the board state after the opening phase, encoding positions as spatial tensors.
+### Phase 2 ML extension: board-state model
+An optional CNN predicting outcome from the board state after the opening phase, encoding positions as spatial tensors.
 
 ### Phase 3: Natural language querying
 A local LLM (LLaMA 3 via Ollama) translates natural language questions into SQL queries.
