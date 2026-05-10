@@ -1,8 +1,8 @@
 joblib
+mlflow
 numpy
-onnx
 onnxruntime
-onnxscript
+onnxscript # needed by torch.onnx.export
 pandas
 psycopg2-binary
 pytest
@@ -10,6 +10,7 @@ python-chess
 requests
 scikit-learn
 torch
+torchinfo
 tqdm
 typer[all]
 zstandard

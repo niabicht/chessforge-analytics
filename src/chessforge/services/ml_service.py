@@ -32,6 +32,12 @@ def _load_rows(log=lambda message: None) -> list[dict] | None:
     return rows
 
 
+def _load_dataset_info() -> list[tuple]:
+    """Fetch dataset metadata for MLflow logging."""
+    with connections.InitializedConnection() as connection:
+        return repository.get_datasets_info(connection)
+
+
 def train_nn(log=lambda message: None) -> bool:
     rows = _load_rows(log)
     if not rows:
@@ -49,9 +55,12 @@ def train_nn(log=lambda message: None) -> bool:
         X_num_val,   X_emb_val,   y_val,
     ) = preprocessor.prepare_training_data(rows)
 
+    dataset_info = _load_dataset_info()
+
     nn_model.train_and_save_model(
         X_num_train, X_emb_train, y_train,
         X_num_val,   X_emb_val,   y_val,
+        dataset_info=dataset_info,
         log=log,
     )
 

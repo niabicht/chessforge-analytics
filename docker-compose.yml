@@ -24,10 +24,17 @@ services:
 
   app:
     build: .
+    
+    environment:
+      MLFLOW_TRACKING_URI: "file:///app/mlruns" # logs and metrics were otherwise not written to the correct path
+      GIT_PYTHON_REFRESH: "quiet" # suppress warnings about missing git setup (we of course do not use git inside the docker container)
 
-    # Mount local data folder inside container
     volumes:
-      - ./data:/app/data
+      - ./data:/app/data # Mount local data folder inside container
+      - ./mlruns:/app/mlruns # For MLflow
+
+    ports:
+    - "5000:5000" # So that docker compose run can map e.g. MLflow UI to this port
 
     # Ensure database starts before app container
     depends_on:

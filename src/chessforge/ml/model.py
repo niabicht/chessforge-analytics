@@ -11,14 +11,17 @@ No knowledge of specific feature names, shape is derived from feature_registry.
 
 import os
 
+import mlflow
 import numpy as np
 import onnxruntime as onnx
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
+from torchinfo import summary
 
 from chessforge.ingestion.feature_registry import EMBEDDING_FEATURES, NUMERIC_FEATURES
 from chessforge.utils.global_constants import PATH_MODEL_DIR
+
 
 _ONNX_PATH = os.path.join(PATH_MODEL_DIR, "model.onnx")
 
@@ -77,7 +80,7 @@ class ChessOutcomeNN(nn.Module):
         ]
         x = torch.cat([x_numeric] + emb_parts, dim=1)
         x = self.hidden(x)
-        return self.output(x)  # logits, not softmax
+        return self.output(x) # logits, not softmax. should it be softmax?
 
 
 
@@ -86,16 +89,18 @@ def train_and_save_model(
     X_num_val:   np.ndarray, X_emb_val:   np.ndarray, y_val:   np.ndarray,
     batch_size: int = 2048,
     lr: float = 1e-3,
+    dataset_info: list[tuple] = None,
     log=lambda message: None,
 ) -> None:
     """
     Train the model, print epoch-level metrics, then export to ONNX.
     Overwrites any existing model.
     """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # TODO test
+    device = "cpu"
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # TODO test if cuda works (but I only have AMD graphics card)
     log(f"Training on {device}  |  train={len(y_train):,}  val={len(y_val):,}")
 
-    # set seed TODO test or do I also need random.seed(seed) and np.random.seed(seed)?
+    # set seed
     seed = 42
     torch.manual_seed(seed)
     if torch.cuda.is_available():
@@ -112,52 +117,106 @@ def train_and_save_model(
             torch.tensor(y,  dtype=torch.long),
         )
 
-    train_ds = TensorDataset(*to_tensors(X_num_train, X_emb_train, y_train))
-    val_ds   = TensorDataset(*to_tensors(X_num_val,   X_emb_val,   y_val))
-
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size)
+    train_loader = DataLoader(TensorDataset(*to_tensors(X_num_train, X_emb_train, y_train)), batch_size=batch_size, shuffle=True)
+    val_loader   = DataLoader(TensorDataset(*to_tensors(X_num_val,   X_emb_val,   y_val)),   batch_size=batch_size)
 
     model = ChessOutcomeNN().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     criterion = nn.CrossEntropyLoss()
 
-    for epoch in range(1, _N_EPOCHS + 1):
-        # train
-        model.train()
-        total_loss, correct, total = 0.0, 0, 0
-        for xn, xe, y in train_loader:
-            xn, xe, y = xn.to(device), xe.to(device), y.to(device)
-            optimizer.zero_grad()
-            logits = model(xn, xe)
-            loss = criterion(logits, y)
-            loss.backward()
-            optimizer.step()
-            total_loss += loss.item() * len(y)
-            correct += (logits.argmax(1) == y).sum().item()
-            total += len(y)
+    # Everything is ready for training now
+    # First set up MLflow and prepare to save some information about the model
+    mlflow.set_experiment("chessforge")
+    with mlflow.start_run():
 
-        train_acc = correct / total
-        train_loss = total_loss / total
+        # Hyperparameters
+        mlflow.log_params({
+            "epochs":            _N_EPOCHS,
+            "batch_size":        batch_size,
+            "learning_rate":     lr,
+            "hidden_dimensions": str(_HIDDEN_DIMENSIONS),
+            "dropout_rate":      _DROPOUT_RATE,
+            "n_train":           len(y_train),
+            "n_val":             len(y_val),
+            "device":            str(device),
+        })
 
-        # validate
-        model.eval()
-        val_loss, val_correct, val_total = 0.0, 0, 0
-        with torch.no_grad():
-            for xn, xe, y in val_loader:
+        # Datasets used for this run
+        if dataset_info:
+            dataset_summary = "; ".join(
+                f"{name} ({game_count} games, ingested {ingested_at:%Y-%m-%d})"
+                for name, game_count, ingested_at in dataset_info
+            )
+            mlflow.log_param("datasets", dataset_summary)
+
+        # Architecture summary (torchinfo), saved as a text artifact
+        n_numeric_features = len(NUMERIC_FEATURES)
+        n_embedding_features = len(EMBEDDING_FEATURES)
+        model_summary = str(summary(
+            model,
+            input_data=[
+                torch.zeros(1, n_numeric_features, dtype=torch.float32).to(device),
+                torch.zeros(1, n_embedding_features, dtype=torch.int64).to(device),
+            ],
+            verbose=0,
+        ))
+        mlflow.log_text(model_summary, "model_architecture.txt")
+
+        # The actual training loop
+        # Keep track of some emtrics for console output and MLflow
+        best_val_acc = 0.0
+        for epoch in range(1, _N_EPOCHS + 1):
+            model.train()
+            total_loss, correct, total = 0.0, 0, 0
+            for xn, xe, y in train_loader:
                 xn, xe, y = xn.to(device), xe.to(device), y.to(device)
+                optimizer.zero_grad()
                 logits = model(xn, xe)
-                val_loss += criterion(logits, y).item() * len(y)
-                val_correct += (logits.argmax(1) == y).sum().item()
-                val_total += len(y)
+                loss = criterion(logits, y)
+                loss.backward()
+                optimizer.step()
+                total_loss += loss.item() * len(y)
+                correct += (logits.argmax(1) == y).sum().item()
+                total += len(y)
 
-        log(
-            f"Epoch {epoch:3}/{_N_EPOCHS}  "
-            f"train loss={train_loss:.4f} acc={train_acc:.3f}  "
-            f"val loss={val_loss/val_total:.4f} acc={val_correct/val_total:.3f}"
-        )
+            train_acc  = correct / total
+            train_loss = total_loss / total
 
-    _export_onnx(model, device, log)
+            # validate
+            model.eval()
+            val_loss, val_correct, val_total = 0.0, 0, 0
+            with torch.no_grad():
+                for xn, xe, y in val_loader:
+                    xn, xe, y = xn.to(device), xe.to(device), y.to(device)
+                    logits       = model(xn, xe)
+                    val_loss    += criterion(logits, y).item() * len(y)
+                    val_correct += (logits.argmax(1) == y).sum().item()
+                    val_total   += len(y)
+
+            val_acc      = val_correct / val_total
+            val_loss_avg = val_loss / val_total
+
+            mlflow.log_metrics({
+                "train_loss": train_loss,
+                "train_acc":  train_acc,
+                "val_loss":   val_loss_avg,
+                "val_acc":    val_acc,
+            }, step=epoch)
+
+            if val_acc > best_val_acc:
+                best_val_acc = val_acc
+
+            log(
+                f"Epoch {epoch:3}/{_N_EPOCHS}  "
+                f"train loss={train_loss:.4f} acc={train_acc:.3f}  "
+                f"val loss={val_loss_avg:.4f} acc={val_acc:.3f}"
+            )
+
+        mlflow.log_metric("best_val_acc", best_val_acc)
+        log(f"Best val accuracy: {best_val_acc:.3f}")
+
+        _export_onnx(model, device, log)
+        mlflow.log_artifact(_ONNX_PATH, artifact_path="onnx_model")
 
 
 def _export_onnx(model: ChessOutcomeNN, device: torch.device, log=lambda message: None,) -> None:
@@ -167,7 +226,6 @@ def _export_onnx(model: ChessOutcomeNN, device: torch.device, log=lambda message
 
     n_numeric = len(NUMERIC_FEATURES)
     n_embedding_features = len(EMBEDDING_FEATURES)
-
     dummy_numeric_features = torch.zeros(1, n_numeric, dtype=torch.float32).to(device)
     dummy_embedding_features = torch.zeros(1, n_embedding_features, dtype=torch.int64).to(device)
 
@@ -182,7 +240,7 @@ def _export_onnx(model: ChessOutcomeNN, device: torch.device, log=lambda message
             "embeddings": {0: "batch"},
             "logits":     {0: "batch"},
         },
-        opset_version=17,
+        opset_version=18,
     )
     log(f"Model saved to {_ONNX_PATH}")
 
@@ -201,8 +259,5 @@ def predict_probabilities(
         {"numeric": numeric, "embeddings": embeddings},
     )[0]  # [1, 3]
 
-    exp = np.exp(logits - logits.max(axis=1, keepdims=True))
-    probabilities = exp / exp.sum(axis=1, keepdims=True)
-    return probabilities[0] # [3]
-    # probabilities = torch.softmax(torch.from_numpy(logits), dim=1) # TODO test if this works the same
-    # return probabilities[0].numpy() # [3]
+    probabilities = torch.softmax(torch.from_numpy(logits), dim=1)
+    return probabilities[0].numpy() # [3]

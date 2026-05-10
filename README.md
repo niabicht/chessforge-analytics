@@ -209,7 +209,6 @@ Add a `.sql` file to `src/chessforge/queries/`. The `query_service.py` discovers
 - make the presentation of queries nicer, parse the output dict, pare the encoding of e.g. openings to human readable format
 - add minimal validation, e.g. checking all dataset lines and drop any with None entries
 - bug: sql queries still use results like "1-0"
-- need to define seed for reproducebility
 - streaming for ML pipeline
 - is draw underrepresented in predictions?
 
