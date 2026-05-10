@@ -5,8 +5,8 @@ from datetime import datetime
 from typing import Any, Iterator
 
 from chessforge.utils.global_constants import (
-    PATH_EXAMPLE_FOLDER, 
-    PATH_DATA_RAW, 
+    PATH_EXAMPLE_DIR, 
+    PATH_DATA_RAW_DIR, 
     NAME_EXAMPLE_FILE, 
     PREFIX_LICHESS_PGN_FILE, 
     PREFIX_DOWNLOAD_TMP_FILE,
@@ -20,14 +20,14 @@ from chessforge.utils.global_constants import (
 ##############
 
 def get_path_example_file() -> str:
-    return os.path.join(PATH_EXAMPLE_FOLDER, NAME_EXAMPLE_FILE + EXTENSION_INPUT_FILE)
+    return os.path.join(PATH_EXAMPLE_DIR, NAME_EXAMPLE_FILE + EXTENSION_INPUT_FILE)
 
 def get_example_dataset_name() -> str:
     return NAME_EXAMPLE_FILE
 
 def get_path_lichess_file(month: str) -> str:
     file_name = build_lichess_name(month, add_file_extension=True)
-    return os.path.join(PATH_DATA_RAW, file_name)
+    return os.path.join(PATH_DATA_RAW_DIR, file_name)
 
 def build_lichess_name(month: str, add_file_extension: bool = False) -> str:
     name = f"{PREFIX_LICHESS_PGN_FILE}{month}"

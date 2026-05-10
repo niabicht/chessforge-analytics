@@ -4,11 +4,12 @@ from tqdm import tqdm
 import chessforge.services.dataset_service as dataset_service
 import chessforge.services.ingestion_service as ingestion_service
 import chessforge.services.input_file_service as input_file_service
+import chessforge.services.ml_service as ml_service
 import chessforge.services.query_service as query_service
+import chessforge.services.ml_service as ml_service
 
 
 app = typer.Typer(help="Chessforge Analytics CLI")
-
 
 
 ###########
@@ -157,6 +158,29 @@ def query(name: str = typer.Option(..., help=f"Name of predefined query. Availab
         return
 
     is_success = query_service.run_query(name, on_result=typer.echo)
+    handle_service_result(is_success)
+
+
+
+######
+### ML
+######
+
+@app.command()
+def train_nn():
+    """Train the neural network on ingested data."""
+    is_success = ml_service.train_nn(log=typer.echo)
+    handle_service_result(is_success)
+
+@app.command()
+def predict_outcome(
+    white_elo: int = typer.Option(...), 
+    black_elo: int = typer.Option(...),
+    eco: str = typer.Option(..., help="ECO code, e.g., B05"), 
+    time_control: str = typer.Option(..., help="Time control string, e.g., 180+2")
+):
+    """Predict probabilities for game result (Win/Draw/Loss) based on game parameters."""
+    is_success = ml_service.predict(white_elo, black_elo, eco, time_control, log=typer.echo)
     handle_service_result(is_success)
 
 

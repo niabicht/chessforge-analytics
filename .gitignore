@@ -19,6 +19,7 @@ venv/
 data/*
 *.zst
 *.pgn
+mlruns/
 
 # Add back example file
 !data/example/

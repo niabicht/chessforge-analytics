@@ -1,7 +1,7 @@
 import os
 import requests
 
-from chessforge.utils.global_constants import URL_LICHESS_DUMP, PATH_DATA_RAW
+from chessforge.utils.global_constants import URL_LICHESS_DUMP, PATH_DATA_RAW_DIR
 from chessforge.utils.utils import get_recent_months_string_generator, build_lichess_name, get_download_tmp_file_name
 
 
@@ -38,8 +38,8 @@ def download_lichess_dump_file(file_name: str, log=lambda message: None, on_prog
     """
 
     # Hanlde paths
-    local_path = os.path.join(PATH_DATA_RAW, file_name)
-    tmp_path = os.path.join(PATH_DATA_RAW, get_download_tmp_file_name(file_name)) 
+    local_path = os.path.join(PATH_DATA_RAW_DIR, file_name)
+    tmp_path = os.path.join(PATH_DATA_RAW_DIR, get_download_tmp_file_name(file_name)) 
 
     if os.path.exists(local_path):
         log(f"File {file_name} already exists.")

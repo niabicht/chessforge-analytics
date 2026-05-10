@@ -2,13 +2,13 @@ import os
 
 import chessforge.database.connections as connections
 import chessforge.database.repository as repository
-from chessforge.utils.global_constants import PATH_QUERY_FOLDER
+from chessforge.utils.global_constants import PATH_QUERY_DIR
 from chessforge.utils.utils import kebab_to_snake, snake_to_kebab
 
 
 def validate_query(query_name: str, log=lambda message: None) -> bool:
     file_name = kebab_to_snake(query_name)
-    path = os.path.join(PATH_QUERY_FOLDER, f"{file_name}.sql") # query name must match file name
+    path = os.path.join(PATH_QUERY_DIR, f"{file_name}.sql") # query name must match file name
     if not os.path.exists(path): 
         log(f"Unknown query name {query_name}. Available queries: {get_query_names_list()}")
         return False
@@ -22,7 +22,7 @@ def validate_query(query_name: str, log=lambda message: None) -> bool:
 def get_query_names_list() -> list[str]:
     return [
         snake_to_kebab(file.replace(".sql", ""))
-        for file in os.listdir(PATH_QUERY_FOLDER)
+        for file in os.listdir(PATH_QUERY_DIR)
         if file.endswith(".sql")
     ]
 
@@ -31,7 +31,7 @@ def get_query_names_list() -> list[str]:
 # Makes it easier to have it separate from run_query function, which I wanted in case I later need it for LLM interface or whatever
 def load_query(query_name: str) -> str:
     file_name = kebab_to_snake(query_name)
-    path = os.path.join(PATH_QUERY_FOLDER, f"{file_name}.sql") # query name must match file name  
+    path = os.path.join(PATH_QUERY_DIR, f"{file_name}.sql") # query name must match file name  
     with open(path, "r") as file:
         return file.read()
 

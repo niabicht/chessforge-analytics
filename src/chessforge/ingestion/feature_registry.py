@@ -1,7 +1,31 @@
-from dataclasses import dataclass
-from typing import Callable
+from dataclasses import dataclass, field
+from typing import Callable, Literal
 
 from chessforge.utils.utils import identity, int_or_none, str_or_none
+
+
+### ML role types
+# "target"    – the label column (result); excluded from model inputs
+# "numeric"   – continuous value that gets scaled (optionally log-transformed first)
+# "embedding" – integer index fed into an nn.Embedding layer
+# None        – feature exists in DB but is not used for ML at all
+MLRole = Literal["target", "numeric", "embedding"] | None
+
+
+@dataclass
+class MLSpec:
+    """Everything the ML pipeline needs to know about one feature."""
+    role: MLRole = None
+
+    # IMPORTANT! numeric only
+    log1p: bool = False         # Apply np.log1p before standard scaling
+                                # Scaler is always StandardScaler for numeric features
+
+    # IMPORTANT! embedding only
+    n_embeddings: int = 0     # Vocabulary size (e.g. 500 for ECO)
+    embedding_dimension: int = 0      # Output dimension (e.g. 8)
+
+
 
 @dataclass
 class FeatureSpec:
@@ -10,7 +34,7 @@ class FeatureSpec:
     db_type: str           # PostgreSQL type, e.g. "INT"
     encode: Callable       # Raw PGN string -> value to store in DB
     decode: Callable       # Stored value -> human-readable string
-
+    ml: MLSpec = field(default_factory=MLSpec)
 
 
 ##############
@@ -31,7 +55,7 @@ def _create_map_handlers(mapping: dict):
 
 
 ### Feature: Result
-_encode_result, _decode_result = _create_map_handlers({
+encode_result, decode_result = _create_map_handlers({
     "0-1":     0, # Black wins
     "1/2-1/2": 1, # Draw
     "1-0":     2, # White wins
@@ -39,7 +63,7 @@ _encode_result, _decode_result = _create_map_handlers({
 
 
 ### Feature: ECO
-def _encode_eco(eco_str: str | None) -> int | None:
+def encode_eco(eco_str: str | None) -> int | None:
     if not eco_str or len(eco_str) != 3: return None
     try:
         letter_map = {'A': 0, 'B': 1, 'C': 2, 'D': 3, 'E': 4}
@@ -50,7 +74,8 @@ def _encode_eco(eco_str: str | None) -> int | None:
     except (ValueError, IndexError):
         return None
 
-def _decode_eco(eco_int: int | None) -> str | None:
+
+def decode_eco(eco_int: int | None) -> str | None:
     if eco_int is None or not (0 <= eco_int <= 499): return None
     letters = "ABCDE"
     letter = letters[eco_int // 100]
@@ -59,9 +84,8 @@ def _decode_eco(eco_int: int | None) -> str | None:
 
 
 ### Feature: TimeControl
-def _encode_time_control(pgn_str: str) -> int | None:
-    if not pgn_str or pgn_str == "-":
-        return None
+def encode_time_control(pgn_str: str) -> int | None:
+    if not pgn_str or pgn_str == "-": return None
     try:
         # Handles "600+5" or "180" (no increment)
         parts = pgn_str.split("+")
@@ -71,7 +95,8 @@ def _encode_time_control(pgn_str: str) -> int | None:
     except (ValueError, IndexError):
         return None
 
-def _decode_time_control(total_seconds: int | None) -> str:
+
+def decode_time_control(total_seconds: int | None) -> str:
     if total_seconds is None:
         return "Unknown"
     
@@ -86,10 +111,10 @@ def _decode_time_control(total_seconds: int | None) -> str:
     return "Classical"
 
 
-# NOTE ideas for features:
+# NOTE ideas for features to maybe add later:
 # elo diff
 # number of moves
-# board after X turns
+# board after X turns (with CNNs)
 # material after X turns
 # engine rating when available (6% of games apparently)
 
@@ -104,29 +129,33 @@ FEATURES: list[FeatureSpec] = [
         pgn_key="Result",
         db_column="result",
         db_type="SMALLINT",
-        encode=_encode_result,
-        decode=_decode_result,
+        encode=encode_result,
+        decode=decode_result,
+        ml=MLSpec(role="target"),
     ),
     FeatureSpec(
         pgn_key="WhiteElo",
         db_column="white_elo",
-        db_type="INT",
+        db_type="SMALLINT",
         encode=int_or_none,
         decode=str,
+        ml=MLSpec(role="numeric"),
     ),
     FeatureSpec(
         pgn_key="BlackElo",
         db_column="black_elo",
-        db_type="INT",
+        db_type="SMALLINT",
         encode=int_or_none,
         decode=str,
+        ml=MLSpec(role="numeric"),
     ),
     FeatureSpec(
         pgn_key="ECO",
         db_column="eco",
         db_type="SMALLINT",
-        encode=_encode_eco,
-        decode=_decode_eco,
+        encode=encode_eco,
+        decode=decode_eco,
+        ml=MLSpec(role="embedding", n_embeddings=500, embedding_dimension=8),
     ),
     FeatureSpec(
         pgn_key="Opening",
@@ -134,17 +163,25 @@ FEATURES: list[FeatureSpec] = [
         db_type="TEXT",
         encode=str_or_none,
         decode=identity,
+        ml=MLSpec(role=None), # Not used in ML
     ),
     FeatureSpec(
         pgn_key="TimeControl",
         db_column="time_control",
-        db_type="TEXT",
-        encode=_encode_time_control,
-        decode=_decode_time_control,
+        db_type="SMALLINT",
+        encode=encode_time_control,
+        decode=decode_time_control,
+        ml=MLSpec(role="numeric", log1p=True),
     ),
 ]
 
-# Derived lookup by pgn_key — use this in parser.py
+
+
+###################
+### Derived Lookups
+###################
+
+# Derived lookup by pgn_key. Used in parser.py
 FEATURES_BY_PGN_KEY: dict[str, FeatureSpec] = {
     spec.pgn_key: spec for spec in FEATURES
 }
@@ -154,3 +191,9 @@ FEATURES_BY_PGN_KEY: dict[str, FeatureSpec] = {
 GAME_COLUMNS: dict[str, str] = {
     spec.pgn_key: spec.db_type for spec in FEATURES
 }
+
+
+# ML-only derived views
+TARGET_FEATURE: FeatureSpec = next(feature for feature in FEATURES if feature.ml.role == "target")
+NUMERIC_FEATURES: list[FeatureSpec] = [feature for feature in FEATURES if feature.ml.role == "numeric"]
+EMBEDDING_FEATURES: list[FeatureSpec] = [feature for feature in FEATURES if feature.ml.role == "embedding"]

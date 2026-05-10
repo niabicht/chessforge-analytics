@@ -1,6 +1,11 @@
-PATH_EXAMPLE_FOLDER = "data/example/"
-PATH_DATA_RAW = "data/raw/"
-PATH_QUERY_FOLDER = "src/chessforge/queries"
+import os
+
+
+PATH_EXAMPLE_DIR = "data/example/"
+PATH_DATA_RAW_DIR = "data/raw/"
+PATH_QUERY_DIR = "src/chessforge/queries"
+PATH_MODEL_DIR = "data/models"
+PATH_MLFLOW_DIR = "mlruns"
 
 URL_LICHESS_DUMP = "https://database.lichess.org/standard"
 
