@@ -2,7 +2,7 @@
 
 An end-to-end data engineering and ML project built on real-world [Lichess](https://lichess.org/) game data.
 
-The project demonstrates a full stack from raw data ingestion to structured querying, with a natural language LLM interface and ML pipeline planned as next phases.
+The project demonstrates a full stack from raw data ingestion to structured querying and ML-based game outcome prediction, with a natural language LLM interface planned as a future extension.
 
 
 
