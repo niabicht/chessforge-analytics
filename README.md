@@ -13,9 +13,8 @@ The project demonstrates a full stack from raw data ingestion to structured quer
 - Store structured game data (Elo, opening ECO, time control, result, …) in PostgreSQL
 - Manage datasets: ingest, list, and delete monthly snapshots independently
 - Query the database via predefined SQL queries through the CLI
-- Train a neural network to predict game outcome probabilities (white win / draw / black win) from Elo ratings, opening ECO, and time control
-- Run outcome predictions for arbitrary game parameters via the CLI
-- Track all training runs (hyperparameters, per-epoch metrics, model artifacts) with MLflow
+- Run DNN-based outcome predictions for arbitrary game parameters via the CLI
+- Track all DNN training runs (hyperparameters, per-epoch metrics, model artifacts) with MLflow
 - Platform-independent thanks to Docker containerization
 
 
