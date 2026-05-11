@@ -163,8 +163,13 @@ python run.py mlflow-ui
 
 ## Planned Features
 
-### Phase 2 ML extension: board-state model
-An optional CNN predicting outcome from the board state after the opening phase, encoding positions as spatial tensors.
+### Phase 2 ML extension: move-sequence and board-state models
+Explore richer chess representations beyond tabular metadata.
+Possible extensions:
+- Sequence models (Transformer encoders) operating directly on opening move sequences to predict outcomes from game progression.
+  Attention mechanisms may learn relationships between tactical and positional patterns across moves, such as captures, development, king safety, and castling.
+- CNN-based board-state models predicting outcomes from board positions after the opening phase, encoding positions as spatial tensors.
+- Hybrid architectures combining metadata, move-sequence embeddings, and board-state representations into a unified prediction model.
 
 ### Phase 3: Natural language querying
 A local LLM (LLaMA 3 via Ollama) translates natural language questions into SQL queries.
